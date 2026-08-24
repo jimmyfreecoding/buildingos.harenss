@@ -7,11 +7,20 @@
 
 ```bash
 git clone <你的-buildingos-仓库> && cd buildingos.harenss
-pnpm install          # 工作区：normalizer / adapters / conformance / cli
-pnpm test             # 35 个测试——全绿
+pnpm install          # 工作区：normalizer / adapters / bootstrap / conformance / web / cli
+pnpm build            # 必须一次——bin 指向 dist/cli.js
+pnpm test             # 55 个测试——全绿
 ```
 
-CLI（`@buildingos/cli`）是入口：
+调用 CLI（三种方式）：
+
+```bash
+pnpm buildingos <cmd>        # 根辅助脚本——无需配置 PATH（推荐）
+pnpm exec buildingos <cmd>   # 工作区 bin
+# 或想在任何目录用裸 buildingos：pnpm link --global @buildingos/cli
+```
+
+示例（下面命令同理，用辅助脚本）：`pnpm buildingos init my-tenant`
 
 ```bash
 # 脚手架一个租户仓库 —— 交互式首启向导：

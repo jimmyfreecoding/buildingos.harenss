@@ -7,11 +7,20 @@
 
 ```bash
 git clone <your-buildingos-repo> && cd buildingos.harenss
-pnpm install          # workspace: normalizer / adapters / conformance / cli
-pnpm test             # 35 tests — everything green
+pnpm install          # workspace: normalizer / adapters / bootstrap / conformance / web / cli
+pnpm build            # required once — the bin points at dist/cli.js
+pnpm test             # 55 tests — everything green
 ```
 
-The CLI (`@buildingos/cli`) is the entry point:
+Invoke the CLI (three ways):
+
+```bash
+pnpm buildingos <cmd>        # root helper script — no PATH configuration needed (recommended)
+pnpm exec buildingos <cmd>   # workspace bin
+# or, for a bare `buildingos` anywhere: pnpm link --global @buildingos/cli
+```
+
+Example (same as below, with the helper): `pnpm buildingos init my-tenant`
 
 ```bash
 # Scaffold a tenant repository — interactive first-boot wizard:
