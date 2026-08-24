@@ -12,48 +12,6 @@
 
 ---
 
-## 中文导读
-
-BuildingOS 是一个面向企业级 AI 的开源 **Harness as a Service / Agent as a Service** 平台。一句话：**让 AI 应用像代码一样可构建、可治理、可演进**。
-
-**关键定位：把 AI Agent 封装成企业内部的"AI Server"。** DSH、Codex 等 Harness 正在把 AI Agent 变成企业内部的 AI Server——持久运行、有工具边界、可被程序化调用。BuildingOS 在此基础上**再封装一层稳定边界**：对外暴露统一 API，对内用 Git 治理 Harness 的 Markdown 文件（Skills、Rules 等）。引擎可以是 DSH、Codex 或未来的任何 Harness，但团队面对的始终是一台稳定、可协作的服务器。**我们不造发动机，我们把发动机封装成标准接口的服务器。**
-
-接入 BuildingOS 之后，**三步即可产出产品**：① **一键部署整套 AI Server 环境**——Docker Compose / K8s 交付件捆绑 PostgreSQL、TDengine、MQTT 等配套服务（引擎可换）；② 用 Git 快速编写与治理自己的 **know-how**——把操作规程、专家经验写成 `skill.md` / `rule.md`（本质就是 how-to 描述），像改代码一样评审、版本化、回滚；③ 预置"顶级 UI"的 Skill 与编码规则（规范文档），前端由 Harness **动态生成**——admin web、dashboard 等**开箱即用，直接出原型产品**。**整个系统没有一句代码：全部是规范文档与配置文档。**连适配器都不用手工维护——BuildingOS **钩住 DSH、Codex 等已收录引擎的开源版本发布，新版本一发布就自动构建、自动测试适配器**，引擎永远保持最新（收录新引擎仍是人工决策，属 M4 之后的社区流程）。**AI 原生的项目生命周期——连"建系统"本身也是 AI 驱动。** 新项目：向导以对话收集"你要做一个什么系统"，自动产出**交付清单**、生成 Docker 部署文件并部署；老项目：指向现有 GitHub 仓库或文件夹，自动识别前后端技术栈、由 Harness 梳理后生成（或复用）部署文件并部署；运行中：改 `skill.md` / `rule.md` → PR → 热加载，系统持续演进。**从 demo 到企业级部署，全程由 Harness 迭代出来。**
-
-**生产环境同样是 Harness 的主场。** 部署时自动给出生产环境部署要求与防火墙开放要求，附运行与升级方案；生产/测试服务器上同时运行这套 Harness，用于日志查看分析、bug 修复等日常运维——修复走完整闭环：服务器 Harness 查日志 → 提交 Issue → 开发机改代码 → 提交 Git → PR → GitHub 验收 → Action 构建镜像 → 服务器 git pull / docker pull → docker up。
-
-普通团队不需要追逐每周都在变的 AI 技术栈——他们要的是一台拿来就能用的服务器，和一份马上能写的 know-how。
-
-### 一句话定义
-
-> 我们不训练大模型，我们让模型在企业里"好好工作"；我们不开发 Harness，我们让现有的 Harness 在企业里"好好被治理"；我们封装 AI Server，让团队像用数据库一样用 AI——**你只负责写 know-how（skill.md / rule.md），开箱即出原型。**
-
-### 为什么是 Harness，而不是 Vibe Coding？
-
-企业级 AI 后端正在经历三个时代的演进：
-
-1. **胶水层时代**（LangChain / 链式调用）—— 模型是被动响应的工具；
-2. **自主 Agent 时代** —— Agent 有了记忆、身份和自主调度，成为"数字员工"；
-3. **Harness 时代（工程化治理）** —— 模型只是"引擎"，真正决定成败的是它外围的工程体系：系统提示词、上下文管理、权限控制、工具调用边界。
-
-Vibe Coding 追求快速原型，适合个人开发者；企业级应用需要的是**确定性、可审计性、可回滚性**——这正是 Harness 模式的价值。**未来企业级 AI 应用，必定建立在 Harness 层之上。**
-
-### 架构一览（三层分离、以 Git 为核）
-
-- **治理与配置层（Git-Native Brain）**：每个客户一个私有 Git 仓库，仓库里的 `Rules`（宪法）、`Skills`（技能）、`Prompts`（人格）、`Configs`（配置）就是应用的"源代码"；变更走 PR → 评审 → 合并 → 热加载，天然实现版本控制、审计与回滚。
-- **集成与编排层（BuildingOS Runtime）**：不自研引擎——通过适配器接入现有 Harness（DSH、Codex 等）作为可替换的执行引擎，负责租户解析、Rules/Skills 装配、上下文构建与权限策略下发，并把各引擎**封装成一台暴露稳定 API 的 AI Server**。适配器**自动跟踪上游引擎版本并自动构建**，无需人工维护。
-- **交互层（Surface）**：预置"顶级 UI"的 Skill 与编码规则（规范文档），前端由 Harness **动态生成**——admin web、dashboard 等开箱即出原型；同一后端可驱动多端界面。**整个系统没有一句代码：全部是规范文档与配置文档。**
-
-### 开源战略
-
-- **开源核心（Open Core）**：BuildingOS 自身的集成与治理层开源（Apache 2.0），并向上游 Harness 社区（DSH、Codex 等）做贡献，**不重复造轮子**。
-- **商业增值**：HaaS 控制平面——企业级多租户管理、高级权限控制、专属支持与私有化部署。
-- **社区驱动**：为医疗、金融、制造、IoT 提供行业模板包；帮助社区为更多 Harness 编写适配器。
-
-> 当前仓库处于 **Concept 阶段**：README 描述的是愿景与目标架构，代码与 Schema 正在设计中（详见 [Roadmap](#project-status--roadmap)）。
-
----
-
 ## Table of Contents
 
 - [What is BuildingOS](#what-is-buildingos)
@@ -151,7 +109,7 @@ The insight: in the AI server era, the server is a commodity (pick DSH or Codex)
 
 BuildingOS doesn't only run your AI server — the harness also builds the system around it:
 
-- **New-project wizard**: tell it, conversationally, what you want to build → it produces a **delivery manifest** (交付清单) → generates Docker deployment files → deploys automatically.
+- **New-project wizard**: tell it, conversationally, what you want to build → it produces a **delivery manifest** → generates Docker deployment files → deploys automatically.
 - **Existing-project wizard**: point it at a GitHub repo or a folder → it detects the frontend/backend stack → the harness analyzes and organizes the project → generates deployment files (or reuses existing ones) → deploys.
 - **Runtime iteration**: while the system runs, change know-how (`skill.md` / `rule.md`) → open a PR → hot reload — the system evolves without downtime.
 - **Demo → enterprise**: the same loop scales. Start as a demo, iterate the manifest and know-how through Git, grow into an enterprise-grade deployment — all through the harness.
@@ -268,73 +226,56 @@ A customer's repo is the *source code* of their AI application:
         └── runtime.yaml
 ```
 
-### Proposed schema (illustrative — being finalized)
+### Schema family
 
-> **Markdown-first**: skills, rules, and prompts are human-readable Markdown — the same format DSH and Codex harnesses already speak — with structured metadata in YAML frontmatter. Markdown is what makes a PR review readable by engineers, compliance, and business people alike. (The YAML snippets below are simplified stand-ins for the Markdown + frontmatter form.)
+> **Finalized in this repository.** The machine-validatable schemas live in [`schemas/`](schemas/README.md): Skill, Rules, Prompts, Configs — plus `adapter-contract/v1` type definitions under `schemas/contract/`. The YAML snippets below are simplified previews of the frontmatter concepts (the canonical documents are Markdown + YAML frontmatter).
 
 ```yaml
-# .buildingos/rules/boundaries.yaml
-# Hard constraints the runtime enforces across engines.
-version: 1
-rules:
-  - id: no-data-exfiltration
-    description: Never send customer data outside the tenant boundary.
-    scope: all
-    enforce: hard        # hard | soft
-  - id: read-only-by-default
-    description: Destructive tool calls require explicit user confirmation.
-    scope: tools
-    enforce: hard
+# rules/*.md frontmatter (simplified preview; see schemas/rules.schema.md)
+---
+id: no-data-exfiltration
+scope: all
+enforce: hard
+permission: { effect: deny, resource: data:*:external }
+order: 10
+---
 ```
 
 ```yaml
-# .buildingos/skills/network-diagnose.yaml
-# How the agent invokes tools for a specific capability.
-version: 1
-skill:
-  id: network-diagnose
-  description: Diagnose switch / AP health from network telemetry.
-  tools:
-    - mcp://telemetry/query-switch-status
-    - mcp://telemetry/query-ap-latency
-  context:
-    include: [topology.yaml, device-inventory.yaml]
-  steps:
-    - Query switch status
-    - Correlate with topology
-    - Report findings with confidence
+# skills/network-diagnose/SKILL.md frontmatter (simplified preview; see schemas/skill.schema.md)
+---
+name: network-diagnose
+description: Diagnose switch / AP health from network telemetry.
+when-to-use: When the user reports latency, packet loss, or port flapping
+invocation: { model: true, user: true, implicit: false }
+dependencies: { tools: [ { type: mcp, value: telemetry } ] }
+references: [ references/thresholds.md ]
+data: [ topology.yaml ]
+---
 ```
 
 ```yaml
-# .buildingos/prompts/persona.yaml
-# The AI "personality" — composed into the engine's system prompt.
-version: 1
-persona:
-  id: ops-engineer
-  language: zh-CN
-  tone: professional, concise
-  conduct:
-    - Report confidence; never fabricate data.
-    - Return structured JSON for operational results.
-    - Read-only by default; self-heal only with written authorization.
+# prompts/ops-engineer.md frontmatter (simplified preview; see schemas/prompts.schema.md)
+---
+id: ops-engineer
+language: zh-CN
+tone: professional, concise
+order: 30
+---
 ```
 
 ```yaml
-# .buildingos/configs/runtime.yaml
-# Engine selection, MCP servers, permissions, UI.
-version: 1
-runtime:
-  engine: dsh            # dsh | codex | ... — engines are pluggable
-  model: gpt-4o          # provider-agnostic model handle
-  mcp_servers:
-    - name: telemetry
-      endpoint: mcp://telemetry.internal
-  permissions:
-    allow: [read:*]
-    deny: [write:router]
-  ui:
-    theme: dark
-    surfaces: [web, mobile]
+# configs/runtime.yaml (simplified preview; see schemas/configs.schema.md)
+version: "0.1"
+engine: dsh            # dsh | codex — engines are pluggable
+model: gpt-4o          # provider-agnostic model handle
+mcp_servers:
+  - name: telemetry
+    transport: stdio
+    command: npx telemetry-mcp
+sandbox: read-only
+approval: on-request
+# permissions are never hand-written: derived from hard rules (schemas/rules.schema.md)
 ```
 
 ### The change workflow (GitOps)
@@ -402,12 +343,12 @@ One customer = one private repository. Each tenant's AI has its own constitution
 
 ## Project Status & Roadmap
 
-**Current status: Concept phase.** The README defines the vision and target architecture. Code and schema are being designed.
+**Current status: Concept phase.** The README defines the vision and target architecture; the M0 design baseline (contracts, schemas, examples) is committed in this repository.
 
 | Milestone | Scope | Status |
 |---|---|---|
-| **M0** | `.buildingos/` schema specification (rules / skills / prompts / configs) | In discussion |
-| **M1** | Harness adapters: integrate DeepSeek Harness (DSH) + Codex harness as pluggable engines, with **auto version tracking for adopted engines** — upstream release hooks → auto-build/conformance (no manual maintenance). New engine adoption is a deliberate, community-reviewed process (M4+) | Planned |
+| **M0** | `.buildingos/` schema family (skills / rules / prompts / configs) + decision memo — see [`schemas/`](schemas/README.md) and [Contract Philosophy](docs/contract-philosophy.md) | ✅ Settled |
+| **M1** | Harness adapters: integrate DeepSeek Harness (DSH) + Codex harness as pluggable engines, with **auto version tracking for adopted engines** — upstream release hooks → auto-build/conformance (no manual maintenance). New engine adoption is a deliberate, community-reviewed process (M4+) | In progress (design draft in `docs/`) |
 | **M1.5** | Turnkey delivery: Docker Compose + Helm charts bundling runtime, adapters, front-ends, and the support stack (PostgreSQL / TDengine / MQTT broker) — one command to a working prototype | Planned |
 | **M2** | Git integration: webhook-driven hot reload, PR CI checks | Planned |
 | **M3** | UI skill & coding-rule packs (top-tier UI as documents) + dynamic UI generation — prototype out of the box, zero front-end code | Planned |
@@ -415,16 +356,16 @@ One customer = one private repository. Each tenant's AI has its own constitution
 | **M5** | AI-native project lifecycle: new-project wizard (delivery manifest → generated deploy files → auto-deploy), existing-project onboarding (stack detection → harness analysis → deploy), runtime iteration — demo-to-enterprise via the harness | Planned |
 | **M5.5** | Production ops companion: harness runs alongside the deployment — auto deployment/firewall requirements, run & upgrade plans, on-server log analysis & bug-fix loop (observe → issue → PR → CI build → pull → docker up) | Planned |
 
-### Proposed repository layout (subject to change)
+### Repository layout
 
 ```
 buildingos/
 ├── runtime/          # BuildingOS runtime: orchestration & governance (Apache 2.0)
 ├── adapters/         # Harness adapters: dsh/, codex/, ...
-├── schemas/          # .buildingos/ JSON Schema definitions
+├── schemas/          # .buildingos/ document schemas + adapter-contract/v1 types
 ├── deploy/           # Docker Compose & Helm charts (bundles PG / TDengine / MQTT)
-├── examples/         # Tenant repo examples per industry
-├── docs/             # Documentation (docs.buildingos.ai)
+├── examples/         # Tenant repo examples + dual-engine compile views
+├── docs/             # Contracts, design drafts, decision memo (docs.buildingos.ai)
 └── web/              # Preset UI skill & coding-rule packs (docs) + dynamic UI renderer
 ```
 
@@ -490,4 +431,4 @@ Integrated harness engines remain under their own licenses (e.g. DeepSeek Harnes
 
 ---
 
-*README scaffold: v0.10 — Concept phase. Sections marked TODO will be filled as the project evolves.*
+*README scaffold: v0.11 — Concept phase. Sections marked TODO will be filled as the project evolves.*
