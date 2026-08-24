@@ -1,0 +1,27 @@
+{
+  "name": "@buildingos/normalizer",
+  "version": "0.1.0",
+  "description": "BuildingOS TenantDocs normalizer — compile pipeline stages 1-2 (parse & validate, normalize, set-level lint). Engine-agnostic, pure functions.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
