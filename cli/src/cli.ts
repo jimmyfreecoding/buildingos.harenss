@@ -17,20 +17,27 @@ import { dshAdapter } from '@buildingos/adapter-dsh';
 import { runConformance } from '@buildingos/conformance';
 import { loadTenantDocs } from '@buildingos/normalizer';
 import { createConsoleIO } from './io.js';
+import { resolveWorkspace } from './workspace.js';
 import { runWizard } from './wizard.js';
 
 function usage(): void {
-  console.log(`BuildingOS CLI
-  buildingos init <dir>                              scaffold a tenant repository
+  console.log(`BuildingOS CLI — the tool; a tenant workspace (a dir with .buildingos/) is the user's project.
+  buildingos init <dir>                              interactive first-boot wizard (language → engine → model → credentials → git)
   buildingos validate [root]                         load + lint a tenant (normalizer)
   buildingos compile --engine <dsh|codex> [root]     render the engine view (--out <dir>)
   buildingos conformance [root]                      conformance G1 report (needs a golden baseline)
+  Workspace resolution: --workspace <dir> | positional root | BUILDINGOS_WORKSPACE | upward .buildingos/ search
 `);
 }
 
 function arg(argv: string[], name: string): string | undefined {
   const i = argv.indexOf(name);
   return i >= 0 ? argv[i + 1] : undefined;
+}
+
+/** Resolve the tenant workspace root for a command. */
+function resolveRoot(flag: string | undefined, positional: string | undefined): { root: string } | { error: string } {
+  return resolveWorkspace({ flag: flag ?? positional, env: process.env.BUILDINGOS_WORKSPACE });
 }
 
 /** Sync asset resolver (compile() is synchronous); reads reference/script files from the tenant. */
@@ -119,18 +126,36 @@ export async function main(argv: string[]): Promise<number> {
       const result = await runWizard(path.resolve(dir), createConsoleIO());
       return result.ok ? 0 : 1;
     }
-    case 'validate':
-      return cmdValidate(path.resolve(rest[0] ?? '.'));
+    case 'validate': {
+      const resolved = resolveRoot(arg(rest, '--workspace') ?? arg(rest, '-w'), rest[0]);
+      if ('error' in resolved) {
+        console.error(resolved.error);
+        return 1;
+      }
+      return cmdValidate(resolved.root);
+    }
     case 'compile': {
       const engine = arg(rest, '--engine');
       const out = arg(rest, '--out');
+      const wsFlag = arg(rest, '--workspace') ?? arg(rest, '-w');
       // Positional root = the first arg that is neither a flag name nor a flag value.
-      const flagTokens = new Set(['--engine', engine, '--out', out]);
-      const root = rest.find((a) => !flagTokens.has(a) && !a.startsWith('-')) ?? '.';
-      return cmdCompile(path.resolve(root), engine, out);
+      const flagTokens = new Set(['--engine', engine, '--out', out, '--workspace', wsFlag, '-w', wsFlag]);
+      const positional = rest.find((a) => !flagTokens.has(a) && !a.startsWith('-'));
+      const resolved = resolveRoot(wsFlag, positional);
+      if ('error' in resolved) {
+        console.error(resolved.error);
+        return 1;
+      }
+      return cmdCompile(resolved.root, engine, out);
     }
-    case 'conformance':
-      return cmdConformance(rest[0] ?? '.', rest);
+    case 'conformance': {
+      const resolved = resolveRoot(arg(rest, '--workspace') ?? arg(rest, '-w'), rest[0]);
+      if ('error' in resolved) {
+        console.error(resolved.error);
+        return 1;
+      }
+      return cmdConformance(resolved.root, rest);
+    }
     default:
       usage();
       return 2;

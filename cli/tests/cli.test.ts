@@ -50,9 +50,24 @@ describe('buildingos CLI', () => {
     await expect(readFile(path.join(dir, '.buildingos', 'configs', 'runtime.yaml'), 'utf8')).resolves.toContain('engine: dsh');
   });
 
-  it('validate passes on the scaffolded tenant', async () => {
+  it('validate passes on the scaffolded tenant (positional root)', async () => {
     const code = await main(['validate', dir]);
     expect(code).toBe(0);
+  });
+
+  it('resolves the workspace via --workspace flag', async () => {
+    const code = await main(['validate', '--workspace', dir]);
+    expect(code).toBe(0);
+  });
+
+  it('reports a helpful error when no workspace resolves', async () => {
+    const empty = await mkdtemp(path.join(os.tmpdir(), 'bos-no-ws-'));
+    try {
+      const code = await main(['validate', empty]);
+      expect(code).toBe(1);
+    } finally {
+      await rm(empty, { recursive: true, force: true });
+    }
   });
 
   it('compile renders the dsh engine view into the tenant', async () => {

@@ -49,6 +49,23 @@ my-tenant/
 └── .gitignore            # D21：钥匙绝不进仓库
 ```
 
+## Workspace —— 工具不是项目
+
+BuildingOS 仓库是**工具**（normalizer / adapters / conformance / cli）；租户工作区是**用户的项目**——任何带 `.buildingos/` 标记的目录。CLI 操作的是工作区，绝不是工具仓库本身（除非你把它 dogfood 成租户）。
+
+工作区解析顺序：
+
+1. `--workspace <dir>`（或位置参数）——显式
+2. `BUILDINGOS_WORKSPACE` 环境变量
+3. 从当前目录向上搜索 `.buildingos/` 标记（像 git 找 `.git`）
+4. 报错并引导（`buildingos init <dir>` / `--workspace`）
+
+```bash
+buildingos validate --workspace my-tenant
+BUILDINGOS_WORKSPACE=my-tenant buildingos compile --engine dsh
+cd my-tenant && buildingos validate          # 向上搜索命中标记
+```
+
 ## 2. CLI 命令参考
 
 | 命令 | 作用 |

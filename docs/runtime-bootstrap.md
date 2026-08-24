@@ -39,7 +39,14 @@ buildingos init
 |---|---|---|
 | `configs/runtime.yaml` | document config (in Git) | engine / model / sandbox / approval / mcp_servers / ui / memory (initial instance of configs.schema) |
 | `.env` (.gitignore) | secret config | MODEL_TOKEN, GIT_TOKEN (M1 env injection) |
-| Repository pointer | bootstrap config | tenant repository path / remote (local state, not in Git) |
+| Repository pointer (workspace) | bootstrap config | tenant workspace root (local state, not in Git) |
+
+**Workspace resolution (tool ≠ project)**: the BuildingOS repository is the *tool*; the tenant
+workspace is the *user's project* — any directory carrying a `.buildingos/` marker. Resolution
+order (git-style): `--workspace <dir>` / positional root → `BUILDINGOS_WORKSPACE` env var →
+upward search from cwd for the `.buildingos/` marker → error with guidance (`buildingos init`
+/ `--workspace`). A persistent default workspace (`~/.buildingos/config.json`) is deferred to M2
+if real usage demands it.
 
 ## 3. Secret management (M1 env injection)
 

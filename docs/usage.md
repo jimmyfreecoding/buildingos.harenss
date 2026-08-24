@@ -49,6 +49,25 @@ my-tenant/
 └── .gitignore            # D21: secrets never enter the repository
 ```
 
+## Workspace — the tool is not the project
+
+The BuildingOS repository is the **tool** (normalizer / adapters / conformance / cli). The tenant
+workspace is the **user's project** — any directory carrying a `.buildingos/` marker. The CLI
+operates on a workspace, never on the tool repo itself (unless you dogfood it as a tenant).
+
+Workspace resolution order:
+
+1. `--workspace <dir>` (or a positional root) — explicit
+2. `BUILDINGOS_WORKSPACE` environment variable
+3. upward search from the current directory for a `.buildingos/` marker (like `git` finding `.git`)
+4. error with guidance (`buildingos init <dir>` / `--workspace`)
+
+```bash
+buildingos validate --workspace my-tenant
+BUILDINGOS_WORKSPACE=my-tenant buildingos compile --engine dsh
+cd my-tenant && buildingos validate          # upward search finds the marker
+```
+
 ## 2. CLI reference
 
 | Command | What it does |
