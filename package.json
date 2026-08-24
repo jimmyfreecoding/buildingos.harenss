@@ -1,0 +1,10 @@
+{
+  "name": "buildingos",
+  "private": true,
+  "description": "BuildingOS monorepo — normalizer, engine adapters, conformance suite",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

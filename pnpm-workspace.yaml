@@ -1,0 +1,6 @@
+packages:
+  - normalizer
+  - adapters/*
+  - conformance
+allowBuilds:
+  esbuild: true

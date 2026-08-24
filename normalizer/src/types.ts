@@ -152,3 +152,88 @@ export interface LoadResult {
   permissions: PermissionFragment[];
   ok: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Adapter contract (mirror of schemas/contract/adapter-contract.schema.json §3/§5/§6)
+// ---------------------------------------------------------------------------
+
+export interface GeneratedFile {
+  path: string;
+  content: string;
+  kind: 'skill' | 'rule' | 'prompt' | 'config' | 'knowledge';
+}
+
+export interface EngineView {
+  engine: 'dsh' | 'codex';
+  files: GeneratedFile[];
+  /** In-memory mode (headless direct config, no files written). */
+  runtimeConfig?: Record<string, unknown>;
+}
+
+/** Engine-native config derived from RuntimeConfig; opaque, adapter-specific. */
+export type EngineConfig = Record<string, unknown>;
+
+export interface ContextSlice {
+  [key: string]: unknown;
+}
+
+export interface PermissionSet {
+  [key: string]: unknown;
+}
+
+export interface RunRequest {
+  sessionId: string;
+  tenantId: string;
+  intent: string;
+  skills: string[];
+  context?: ContextSlice;
+  permissions: PermissionSet;
+}
+
+export type AsyncStream<T> = AsyncIterable<T> | Iterable<T>;
+
+export type AgentEvent =
+  | { type: 'thought'; ts: string; payload: { text: string } }
+  | { type: 'tool.call'; ts: string; payload: { tool: string; args: unknown } }
+  | { type: 'tool.result'; ts: string; payload: { tool: string; ok: boolean; result?: unknown } }
+  | { type: 'step'; ts: string; payload: { step: string; summary?: string } }
+  | { type: 'message'; ts: string; payload: { text: string } }
+  | { type: 'artifact'; ts: string; payload: { type: string; data: unknown } }
+  | { type: 'error'; ts: string; payload: { code: string; message: string } }
+  | { type: 'approval.request'; ts: string; payload: { id: string; description: string; options?: string[] } }
+  | { type: 'user.input.request'; ts: string; payload: { id: string; question: string; options?: string[] } };
+
+export interface ToolDescriptor {
+  name: string;
+  description?: string;
+  inputSchema?: unknown;
+}
+
+export interface AdapterStatus {
+  engine: string;
+  version?: string;
+  healthy: boolean;
+  capabilities?: string[];
+}
+
+export interface ConformanceReport {
+  dimension: 'interface' | 'behavior' | 'policy' | 'update-gate';
+  passed: boolean;
+  details?: string;
+}
+
+/** Asset resolver used by compile() to materialize reference/script files (injected; keeps compile pure). */
+export type AssetResolver = (skill: string, rel: string) => string | undefined;
+
+export interface CompileOptions {
+  assets?: AssetResolver;
+}
+
+export interface HarnessAdapter {
+  engine: 'dsh' | 'codex';
+  compile(docs: TenantDocs, opts?: CompileOptions): EngineView;
+  run(req: RunRequest, cfg: EngineConfig): AsyncStream<AgentEvent>;
+  tools(): ToolDescriptor[];
+  status(): AdapterStatus;
+  selfcheck(): ConformanceReport[];
+}

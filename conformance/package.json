@@ -1,0 +1,33 @@
+{
+  "name": "@buildingos/conformance",
+  "version": "0.1.0",
+  "description": "BuildingOS conformance suite — golden task G1 (compile parity against engine-views) automated; G2–G4 engine-gated skeletons.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "buildingos-conformance": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@buildingos/adapter-codex": "workspace:*",
+    "@buildingos/adapter-dsh": "workspace:*",
+    "@buildingos/normalizer": "workspace:*",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

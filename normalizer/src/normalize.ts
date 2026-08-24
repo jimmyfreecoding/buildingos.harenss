@@ -102,7 +102,9 @@ const ENFORCE_VALUES = ['hard', 'soft'] as const;
 
 /** Split a rule body into sections by ## headings (D7). The leading H1 becomes the default heading. */
 export function splitRuleSections(body: string): RuleSection[] {
-  const lines = body.split(/\r?\n/);
+  // frontmatter extraction can leave a leading blank line; drop it so the H1 is the first line.
+  const cleaned = body.replace(/^\r?\n/, '');
+  const lines = cleaned.split(/\r?\n/);
   const sections: RuleSection[] = [];
   let current: RuleSection | null = null;
   for (const line of lines) {

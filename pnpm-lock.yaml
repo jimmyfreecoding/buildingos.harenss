@@ -6,7 +6,72 @@ settings:
 
 importers:
 
-  .:
+  .: {}
+
+  adapters/codex:
+    dependencies:
+      '@buildingos/normalizer':
+        specifier: workspace:*
+        version: link:../../normalizer
+      yaml:
+        specifier: ^2.6.1
+        version: 2.9.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@22.20.1)(yaml@2.9.0)
+
+  adapters/dsh:
+    dependencies:
+      '@buildingos/normalizer':
+        specifier: workspace:*
+        version: link:../../normalizer
+      yaml:
+        specifier: ^2.6.1
+        version: 2.9.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@22.20.1)(yaml@2.9.0)
+
+  conformance:
+    dependencies:
+      '@buildingos/adapter-codex':
+        specifier: workspace:*
+        version: link:../adapters/codex
+      '@buildingos/adapter-dsh':
+        specifier: workspace:*
+        version: link:../adapters/dsh
+      '@buildingos/normalizer':
+        specifier: workspace:*
+        version: link:../normalizer
+      yaml:
+        specifier: ^2.6.1
+        version: 2.9.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@22.20.1)(yaml@2.9.0)
+
+  normalizer:
     dependencies:
       yaml:
         specifier: ^2.6.1
