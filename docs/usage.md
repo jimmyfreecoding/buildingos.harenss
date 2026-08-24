@@ -14,7 +14,15 @@ pnpm test             # 35 tests — everything green
 The CLI (`@buildingos/cli`) is the entry point:
 
 ```bash
-# Scaffold a tenant repository (the AI application's "source code")
+# Scaffold a tenant repository — interactive first-boot wizard:
+#   0. language (中文 / English)   ← the very first question
+#   1. engine (dsh / codex)        → runtime.yaml engine
+#   2. model (starter catalog)     → runtime.yaml model
+#   3. model token                 → .env (never Git, D21)
+#   4. git token (may skip)        → .env
+#   5. scaffold .buildingos/ + knowledge/ + .gitignore
+#   6. validate (normalizer)
+#   7. enter runtime (dev mode) — the runtime CLI ships with M1.5
 buildingos init my-tenant
 
 # Validate & lint it (normalizer pipeline stages 1–2)
@@ -85,7 +93,8 @@ buildingos serve --prod    # production companion (M5.5): same runtime, ops post
 | Stage | Milestone | Status |
 |---|---|---|
 | `normalizer` / adapters / conformance / minimal CLI | M1 | ✅ implemented, 35 tests |
-| Runtime CLI wizard (`init` steps 1–4: engine/model/credentials/git) | M1.5 | 📋 designed — [runtime-bootstrap.md](runtime-bootstrap.md) |
+| First-boot wizard (`init` steps 0–5: language/engine/model/credentials/git/scaffold) | M1.5 | ✅ implemented — [runtime-bootstrap.md](runtime-bootstrap.md) §2 |
+| Runtime CLI entry (step 7: `buildingos dev` / `serve --prod`) | M1.5/M5.5 | 📋 pending |
 | Local Docker dev environment (Turnkey compose: runtime + PG + bundled services) | M1.5 | 📋 designed — README roadmap |
 | Git integration (webhook hot reload, PR CI checks) | M2 | 📋 planned |
 | Dynamic UI (admin web / dashboards from UI-skill documents) | M3 | 📋 planned |

@@ -14,7 +14,15 @@ pnpm test             # 35 个测试——全绿
 CLI（`@buildingos/cli`）是入口：
 
 ```bash
-# 脚手架一个租户仓库（AI 应用的"源代码"）
+# 脚手架一个租户仓库 —— 交互式首启向导：
+#   0. 选择语言（中文 / English）   ← 第一个问题
+#   1. 选引擎（dsh / codex）        → runtime.yaml engine
+#   2. 选模型（内置起始目录）       → runtime.yaml model
+#   3. 模型 token                   → .env（绝不进 Git，D21）
+#   4. git 凭证（可跳过）           → .env
+#   5. 脚手架 .buildingos/ + knowledge/ + .gitignore
+#   6. 校验（normalizer）
+#   7. 进入 runtime（dev 模式）——runtime CLI 随 M1.5 交付
 buildingos init my-tenant
 
 # 校验与 lint（normalizer 流水线第 1–2 段）
@@ -85,7 +93,8 @@ buildingos serve --prod    # 生产伴生（M5.5）：同一 runtime 的运维�
 | 阶段 | 里程碑 | 状态 |
 |---|---|---|
 | normalizer / 适配器 / conformance / 最小 CLI | M1 | ✅ 已实现，35 测试 |
-| Runtime CLI 向导（init 第 1–4 步：引擎/模型/凭证/git） | M1.5 | 📋 已设计——[runtime-bootstrap.md](runtime-bootstrap.md) |
+| 首启向导（init 第 0–5 步：语言/引擎/模型/凭证/git/脚手架） | M1.5 | ✅ 已实现——[runtime-bootstrap.md](runtime-bootstrap.md) §2 |
+| Runtime CLI 入口（第 7 步：`buildingos dev` / `serve --prod`） | M1.5/M5.5 | 📋 待实现 |
 | 本地 Docker 开发环境（Turnkey compose：runtime + PG + 捆绑服务） | M1.5 | 📋 已设计——README 路线图 |
 | Git 集成（webhook 热加载、PR CI 检查） | M2 | 📋 计划中 |
 | 动态 UI（从 UI-skill 文档生成 admin web / dashboard） | M3 | 📋 计划中 |

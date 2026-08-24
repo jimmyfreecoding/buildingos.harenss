@@ -64,6 +64,7 @@ approval: on-request
   '.gitignore': `# 秘密配置（D21）：钥匙绝不进仓库
 .env
 .env.*
+!.env.example
 `,
 };
 

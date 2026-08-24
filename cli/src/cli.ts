@@ -16,7 +16,8 @@ import { codexAdapter } from '@buildingos/adapter-codex';
 import { dshAdapter } from '@buildingos/adapter-dsh';
 import { runConformance } from '@buildingos/conformance';
 import { loadTenantDocs } from '@buildingos/normalizer';
-import { initTenant } from './init.js';
+import { createConsoleIO } from './io.js';
+import { runWizard } from './wizard.js';
 
 function usage(): void {
   console.log(`BuildingOS CLI
@@ -113,11 +114,10 @@ export async function main(argv: string[]): Promise<number> {
         usage();
         return 2;
       }
-      const written = await initTenant(path.resolve(dir));
-      console.log(`init: tenant scaffolded in ${path.resolve(dir)}`);
-      for (const f of written) console.log(`  + ${f}`);
-      console.log('next: buildingos validate <dir>');
-      return 0;
+      // First-boot wizard (docs/runtime-bootstrap.md §2): language first, then
+      // engine → model → credentials → git → scaffold → validate → runtime.
+      const result = await runWizard(path.resolve(dir), createConsoleIO());
+      return result.ok ? 0 : 1;
     }
     case 'validate':
       return cmdValidate(path.resolve(rest[0] ?? '.'));

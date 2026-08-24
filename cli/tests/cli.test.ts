@@ -3,19 +3,50 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { main } from '../src/cli.js';
+import type { WizardIO } from '../src/io.js';
+import { runWizard } from '../src/wizard.js';
+
+function scriptedIO(): WizardIO {
+  const script = [
+    { value: '1' }, // language: 中文
+    { value: '1' }, // engine: dsh
+    { value: '3' }, // model: gpt-4o
+    { value: 'model-tok' },
+    { value: 'git-tok' },
+  ];
+  let i = 0;
+  return {
+    async choose(_q, options, defaultValue) {
+      for (;;) {
+        const step = script[i++];
+        if (!step) throw new Error('no scripted answer');
+        const idx = step.value === '' && defaultValue !== undefined
+          ? options.findIndex((o) => o.value === defaultValue)
+          : Number(step.value) - 1;
+        if (idx >= 0 && idx < options.length) return options[idx].value;
+      }
+    },
+    async secret() {
+      const step = script[i++];
+      if (!step) throw new Error('no scripted secret');
+      return step.value;
+    },
+    note() {},
+  };
+}
 
 describe('buildingos CLI', () => {
   let dir: string;
   beforeAll(async () => {
     dir = await mkdtemp(path.join(os.tmpdir(), 'bos-cli-'));
+    const result = await runWizard(dir, scriptedIO());
+    expect(result.ok).toBe(true);
   });
   afterAll(async () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it('init scaffolds a tenant repository', async () => {
-    const code = await main(['init', dir]);
-    expect(code).toBe(0);
+  it('wizard scaffolded a tenant repository', async () => {
     await expect(readFile(path.join(dir, '.buildingos', 'configs', 'runtime.yaml'), 'utf8')).resolves.toContain('engine: dsh');
   });
 
