@@ -22,7 +22,6 @@
 - [Quick Start](#quick-start)
 - [Project Status & Roadmap](#project-status--roadmap)
 - [Open Source & Business Model](#open-source--business-model)
-- [About the Name & Brand](#about-the-name--brand)
 - [Community & Contributing](#community--contributing)
 - [License](#license)
 
@@ -380,29 +379,6 @@ BuildingOS's own development workflow will run on the DSH adapter — the projec
 - **Open core**: the BuildingOS runtime + adapters are open source (Apache 2.0). We integrate with — and contribute back to — existing open harnesses (DSH, Codex) instead of building our own engine. No reinventing the wheel.
 - **Commercial value-add**: the HaaS control plane — enterprise multi-tenancy management, advanced permission control, dedicated support, private deployment, and SLAs on harness operations.
 - **Community-driven**: industry template packs (medical, finance, manufacturing, IoT) let developers ship vertical AI-native SaaS on BuildingOS fast; contributors can add adapters for more harnesses.
-
----
-
-## About the Name & Brand
-
-- **"Building" — double meaning**: from physical *buildings* (the legacy building-IoT origin) to digital *building* (constructing AI-native software). From connecting physical devices to orchestrating AI intelligence — the evolution *is* the brand story.
-- **"OS" — the ambition**: not a single tool, but the underlying infrastructure and governance system that carries all AI applications.
-
-Slogans:
-
-> **BuildingOS: The AI-Native OS for Building Everything.**
->
-> BuildingOS: Where Enterprise AI Meets Git-Native Governance.
-
-Domain strategy:
-
-| Domain | Purpose |
-|---|---|
-| `buildingos.ai` | Primary domain (held) |
-| `harness.buildingos.ai` | Harness console & docs entry |
-| `docs.buildingos.ai` | Developer docs & API reference |
-| `community.buildingos.ai` | Open source community & forum |
-| `buildingos.dev`, `buildingos.robot` | Brand protection (recommended) |
 
 ---
 

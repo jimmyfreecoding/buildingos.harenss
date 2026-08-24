@@ -52,7 +52,6 @@ Vibe Coding 追求快速原型，适合个人开发者；企业级应用需要�
 - [快速开始](#快速开始)
 - [项目状态与路线图](#项目状态与路线图)
 - [开源与商业模式](#开源与商业模式)
-- [品牌与命名](#品牌与命名)
 - [社区与贡献](#社区与贡献)
 - [License](#license)
 
@@ -429,28 +428,6 @@ BuildingOS 自身的开发工作流将跑在 DSH 适配器上——项目从第�
 
 ---
 
-## 品牌与命名
-
-- **"Building" 的双关**：从物理世界的"楼宇"（楼宇 IoT 前身）到数字世界的"构建"（构建 AI 原生软件）。从连接物理设备到编排 AI 智能——这种演进本身就是品牌叙事。
-- **"OS" 的野心**：不是单一工具，而是承载一切 AI 应用的底层基础设施与治理体系。
-
-标语：
-
-> **BuildingOS: The AI-Native OS for Building Everything.**
->
-> BuildingOS: Where Enterprise AI Meets Git-Native Governance.
-
-域名策略：
-
-| 域名 | 用途 |
-|---|---|
-| `buildingos.ai` | 主域名（已持有） |
-| `harness.buildingos.ai` | Harness 控制台与文档入口 |
-| `docs.buildingos.ai` | 开发者文档与 API 参考 |
-| `community.buildingos.ai` | 开源社区与论坛 |
-| `buildingos.dev`、`buildingos.robot` | 品牌护卫（建议） |
-
----
 
 ## 社区与贡献
 
