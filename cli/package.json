@@ -1,0 +1,33 @@
+{
+  "name": "@buildingos/cli",
+  "version": "0.1.0",
+  "description": "BuildingOS CLI — tenant scaffold (init), validation (normalizer), engine-view compilation (adapters), conformance. The first-boot surface of the runtime (docs/runtime-bootstrap.md b3: CLI wizard in M1).",
+  "type": "module",
+  "main": "dist/cli.js",
+  "types": "dist/cli.d.ts",
+  "bin": {
+    "buildingos": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@buildingos/adapter-codex": "workspace:*",
+    "@buildingos/adapter-dsh": "workspace:*",
+    "@buildingos/conformance": "workspace:*",
+    "@buildingos/normalizer": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

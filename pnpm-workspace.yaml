@@ -2,5 +2,6 @@ packages:
   - normalizer
   - adapters/*
   - conformance
+  - cli
 allowBuilds:
   esbuild: true

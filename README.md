@@ -314,29 +314,20 @@ One customer = one private repository. Each tenant's AI has its own constitution
 
 ## Quick Start
 
-> **TODO**: This section will be filled in once the MVP exists. Nothing here is runnable yet.
-
-### Prerequisites
-
-- [ ] TODO: an existing harness engine (e.g. DeepSeek Harness / DSH, Codex harness)
-- [ ] TODO: define runtime requirements (Node / Go / Docker…)
-
-### Install
+Full guide: [docs/usage.md](docs/usage.md) · 中文：[docs/usage_cn.md](docs/usage_cn.md)
 
 ```bash
-# TODO: installation command once the BuildingOS runtime is released
+git clone <repo> && cd buildingos.harenss
+pnpm install          # workspace: normalizer / adapters / conformance / cli
+pnpm test             # 35 tests
+
+buildingos init my-tenant        # scaffold a tenant repository (documents as code)
+buildingos validate my-tenant    # load + lint (schema checks, D20/D3/D14 rules)
+buildingos compile --engine dsh my-tenant    # render the engine view
+buildingos conformance my-tenant            # compile-parity vs golden baseline
 ```
 
-### Run your first agent
-
-```bash
-# TODO: bootstrap a tenant repo and start the runtime against your harness engine
-```
-
-### Create your first Skill
-
-- [ ] TODO: scaffold `.buildingos/skills/hello.md`
-- [ ] TODO: open the built-in admin/dashboard and see your first prototype
+The runtime CLI wizard (`init` steps 1–4: engine/model/credentials/git), the local Docker dev environment (M1.5 Turnkey), Git webhooks (M2), dynamic UI (M3), the project wizard (M5) and the production companion (M5.5) are designed and pending implementation — see [Roadmap](#project-status--roadmap) and [docs/runtime-bootstrap.md](docs/runtime-bootstrap.md).
 
 ---
 
