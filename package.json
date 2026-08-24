@@ -6,7 +6,7 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "check": "pnpm -r typecheck && pnpm -r build && pnpm -r test",
+    "check": "pnpm -r build && pnpm -r typecheck && pnpm -r test",
     "verify": "pnpm check && pnpm --filter @buildingos/cli demo"
   }
 }

@@ -3,23 +3,21 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { loadTenantDocs } from '@buildingos/normalizer';
-import type { WizardIO } from '../src/io.js';
-import { runWizard } from '../src/wizard.js';
+import { runWizard, runWizardFromAnswers } from '../src/index.js';
+import type { WizardIO } from '../src/index.js';
 
 /** Scripted I/O driving the wizard deterministically (zh answers by default). */
 function scriptedIO(script: Array<{ q: string; value: string }>): WizardIO {
   let i = 0;
   return {
     async choose(question, options, defaultValue) {
-      const q = question;
       for (;;) {
         const step = script[i++];
-        if (!step) throw new Error(`no scripted answer for: ${q}`);
+        if (!step) throw new Error(`no scripted answer for: ${question}`);
         const idx = step.value === '' && defaultValue !== undefined
           ? options.findIndex((o) => o.value === defaultValue)
           : Number(step.value) - 1;
         if (idx >= 0 && idx < options.length) return options[idx].value;
-        // retry loop; keep consuming until a valid index
       }
     },
     async secret(question) {
@@ -41,7 +39,6 @@ describe('first-boot wizard (runtime-bootstrap §2)', () => {
   });
 
   it('language comes first (step 0), then engine → model → credentials → git', async () => {
-    // zh, engine=1 (dsh), model=1 (deepseek-chat), token=model-tok, git=git-tok
     const io = scriptedIO([
       { q: 'lang', value: '1' }, // 中文
       { q: 'engine', value: '1' }, // dsh
@@ -65,7 +62,6 @@ describe('first-boot wizard (runtime-bootstrap §2)', () => {
     expect(env).toContain('GIT_TOKEN=git-tok');
     const example = await readFile(path.join(dir, '.env.example'), 'utf8');
     expect(example).toContain('MODEL_TOKEN=');
-    // .env must be ignored; .env.example must not be (D21)
     const gitignore = await readFile(path.join(dir, '.gitignore'), 'utf8');
     expect(gitignore).toContain('.env');
     expect(gitignore).toContain('!.env.example');
@@ -97,6 +93,29 @@ describe('first-boot wizard (runtime-bootstrap §2)', () => {
       expect(env).not.toContain('GIT_TOKEN=');
     } finally {
       await rm(dir2, { recursive: true, force: true });
+    }
+  });
+
+  it('runWizardFromAnswers drives the same wizard non-interactively (web console path)', async () => {
+    const dir3 = await mkdtemp(path.join(os.tmpdir(), 'bos-wiz-ans-'));
+    try {
+      const result = await runWizardFromAnswers(dir3, {
+        language: 'zh',
+        engine: 'codex',
+        model: 'gpt-4o',
+        modelToken: 'tok-web',
+        gitToken: 'git-web',
+      });
+      expect(result.ok).toBe(true);
+      expect(result.engine).toBe('codex');
+      expect(result.model).toBe('gpt-4o');
+      expect(result.transcript.some((l) => l.includes('codex'))).toBe(true);
+      const cfg = await readFile(path.join(dir3, '.buildingos', 'configs', 'runtime.yaml'), 'utf8');
+      expect(cfg).toContain('engine: codex');
+      const env = await readFile(path.join(dir3, '.env'), 'utf8');
+      expect(env).toContain('MODEL_TOKEN=tok-web');
+    } finally {
+      await rm(dir3, { recursive: true, force: true });
     }
   });
 });

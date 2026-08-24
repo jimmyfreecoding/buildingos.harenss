@@ -1,7 +1,6 @@
 /**
- * Wizard I/O — injectable so tests can script answers while the real CLI uses
- * an interactive readline. Secrets are read as plain input (terminal-echo
- * masking is a UX nicety deferred with the runtime console, M3).
+ * Wizard I/O — injectable so the CLI (readline), the web console (request-driven),
+ * and tests (scripted) share one wizard implementation.
  */
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
@@ -37,6 +36,23 @@ export function createConsoleIO(): WizardIO {
     },
     note(message) {
       rl.write(`${message}\n`);
+    },
+  };
+}
+
+/** Collects notes into a transcript (used by the web console and tests). */
+export function createTranscriptIO(notes: string[]): WizardIO {
+  return {
+    async choose(question, options, defaultValue) {
+      const value = await createConsoleIO().choose(question, options, defaultValue);
+      return value;
+    },
+    async secret(question) {
+      const value = await createConsoleIO().secret(question);
+      return value;
+    },
+    note(message) {
+      notes.push(message);
     },
   };
 }

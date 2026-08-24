@@ -15,14 +15,15 @@ import path from 'node:path';
 import { codexAdapter } from '@buildingos/adapter-codex';
 import { dshAdapter } from '@buildingos/adapter-dsh';
 import { runConformance } from '@buildingos/conformance';
+import { createConsoleIO, runWizard } from '@buildingos/bootstrap';
 import { loadTenantDocs } from '@buildingos/normalizer';
-import { createConsoleIO } from './io.js';
+import { startServer } from '@buildingos/web';
 import { resolveWorkspace } from './workspace.js';
-import { runWizard } from './wizard.js';
 
 function usage(): void {
   console.log(`BuildingOS CLI — the tool; a tenant workspace (a dir with .buildingos/) is the user's project.
   buildingos init <dir>                              interactive first-boot wizard (language → engine → model → credentials → git)
+  buildingos web [--port N]                          start the web console (the interaction surface)
   buildingos validate [root]                         load + lint a tenant (normalizer)
   buildingos compile --engine <dsh|codex> [root]     render the engine view (--out <dir>)
   buildingos conformance [root]                      conformance G1 report (needs a golden baseline)
@@ -125,6 +126,13 @@ export async function main(argv: string[]): Promise<number> {
       // engine → model → credentials → git → scaffold → validate → runtime.
       const result = await runWizard(path.resolve(dir), createConsoleIO());
       return result.ok ? 0 : 1;
+    }
+    case 'web': {
+      const port = Number(arg(rest, '--port') ?? process.env.PORT ?? 4173);
+      const server = await startServer({ port });
+      console.log(`BuildingOS web console: http://127.0.0.1:${port}  (Ctrl+C to stop)`);
+      await new Promise<void>(() => {}); // keep the process alive; the server keeps listening
+      return server ? 0 : 1;
     }
     case 'validate': {
       const resolved = resolveRoot(arg(rest, '--workspace') ?? arg(rest, '-w'), rest[0]);

@@ -1,7 +1,9 @@
 packages:
   - normalizer
   - adapters/*
+  - bootstrap
   - conformance
+  - web
   - cli
 allowBuilds:
   esbuild: true

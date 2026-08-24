@@ -46,6 +46,28 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/node@22.20.1)(yaml@2.9.0)
 
+  bootstrap:
+    dependencies:
+      '@buildingos/adapter-codex':
+        specifier: workspace:*
+        version: link:../adapters/codex
+      '@buildingos/adapter-dsh':
+        specifier: workspace:*
+        version: link:../adapters/dsh
+      '@buildingos/normalizer':
+        specifier: workspace:*
+        version: link:../normalizer
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@22.20.1)(yaml@2.9.0)
+
   cli:
     dependencies:
       '@buildingos/adapter-codex':
@@ -54,12 +76,18 @@ importers:
       '@buildingos/adapter-dsh':
         specifier: workspace:*
         version: link:../adapters/dsh
+      '@buildingos/bootstrap':
+        specifier: workspace:*
+        version: link:../bootstrap
       '@buildingos/conformance':
         specifier: workspace:*
         version: link:../conformance
       '@buildingos/normalizer':
         specifier: workspace:*
         version: link:../normalizer
+      '@buildingos/web':
+        specifier: workspace:*
+        version: link:../web
     devDependencies:
       '@types/node':
         specifier: ^22.10.0
@@ -101,6 +129,34 @@ importers:
       yaml:
         specifier: ^2.6.1
         version: 2.9.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@22.20.1)(yaml@2.9.0)
+
+  web:
+    dependencies:
+      '@buildingos/adapter-codex':
+        specifier: workspace:*
+        version: link:../adapters/codex
+      '@buildingos/adapter-dsh':
+        specifier: workspace:*
+        version: link:../adapters/dsh
+      '@buildingos/bootstrap':
+        specifier: workspace:*
+        version: link:../bootstrap
+      '@buildingos/conformance':
+        specifier: workspace:*
+        version: link:../conformance
+      '@buildingos/normalizer':
+        specifier: workspace:*
+        version: link:../normalizer
     devDependencies:
       '@types/node':
         specifier: ^22.10.0

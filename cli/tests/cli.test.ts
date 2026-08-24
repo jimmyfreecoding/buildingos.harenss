@@ -2,9 +2,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { runWizard } from '@buildingos/bootstrap';
+import type { WizardIO } from '@buildingos/bootstrap';
 import { main } from '../src/cli.js';
-import type { WizardIO } from '../src/io.js';
-import { runWizard } from '../src/wizard.js';
 
 function scriptedIO(): WizardIO {
   const script = [

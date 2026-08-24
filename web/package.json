@@ -1,0 +1,32 @@
+{
+  "name": "@buildingos/web",
+  "version": "0.1.0",
+  "description": "BuildingOS web console — the interaction surface (per product decision: web over CLI). Wizard / validate / compile / conformance panels backed by the same modules as the CLI.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src/index.html"
+  ],
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').copyFileSync('src/index.html','dist/index.html')\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@buildingos/adapter-codex": "workspace:*",
+    "@buildingos/adapter-dsh": "workspace:*",
+    "@buildingos/bootstrap": "workspace:*",
+    "@buildingos/conformance": "workspace:*",
+    "@buildingos/normalizer": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

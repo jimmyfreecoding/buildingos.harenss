@@ -1,7 +1,6 @@
 /**
- * `buildingos init <dir>` — scaffold a new tenant repository (the CLI wizard's
- * first-boot artifact set, docs/runtime-bootstrap.md §2). A minimal starter set:
- * .buildingos/{rules,skills,prompts,configs} + knowledge/ + .gitignore (D21).
+ * Tenant scaffold — the first-boot artifact set (runtime-bootstrap §2, step 5).
+ * A minimal starter: .buildingos/{rules,skills,prompts,configs} + knowledge/ + .gitignore (D21).
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';

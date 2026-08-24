@@ -10,9 +10,8 @@
  *   step 6  validate (normalizer)                               → diagnostics
  *   step 7  summary + next steps
  *
- * Engine/model/credentials/git are bootstrap configuration (D21: choose → document
- * config in Git, fill → secrets in .env). The model catalog is a starter list;
- * engine-native catalogs (codex model/list) replace it when the run() bridge lands (R1).
+ * Shared by the CLI (console IO) and the web console (request-driven IO):
+ * single source of truth for the bootstrap experience.
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -25,13 +24,13 @@ import type { Choice, WizardIO } from './io.js';
 export type WizardLanguage = 'zh' | 'en';
 export type EngineName = 'dsh' | 'codex';
 
-const ENGINE_CHOICES: Choice<EngineName>[] = [
+export const ENGINE_CHOICES: Choice<EngineName>[] = [
   { value: 'dsh', label: 'DeepSeek Harness (DSH)' },
   { value: 'codex', label: 'OpenAI Codex harness' },
 ];
 
 /** Starter model catalogs; engine-native catalogs (codex model/list) land with the run() bridge (R1). */
-const MODEL_CATALOG: Record<EngineName, Choice<string>[]> = {
+export const MODEL_CATALOG: Record<EngineName, Choice<string>[]> = {
   dsh: [
     { value: 'deepseek-chat', label: 'deepseek-chat' },
     { value: 'deepseek-reasoner', label: 'deepseek-reasoner' },
@@ -44,7 +43,7 @@ const MODEL_CATALOG: Record<EngineName, Choice<string>[]> = {
   ],
 };
 
-interface L10n {
+export interface L10n {
   step0: string;
   langZh: string;
   langEn: string;
@@ -70,7 +69,7 @@ interface L10n {
   secretNote: string;
 }
 
-const ZH: L10n = {
+export const ZH: L10n = {
   step0: '请选择语言 / Select language:',
   langZh: '中文',
   langEn: 'English',
@@ -96,7 +95,7 @@ const ZH: L10n = {
   secretNote: '提示：token 仅写入租户目录下的 .env（已被 .gitignore 排除）；请妥善保管。',
 };
 
-const EN: L10n = {
+export const EN: L10n = {
   step0: 'Select language:',
   langZh: 'Chinese',
   langEn: 'English',
@@ -127,9 +126,10 @@ export interface WizardResult {
   language: WizardLanguage;
   engine: EngineName;
   model: string;
+  transcript: string[];
 }
 
-export async function runWizard(dir: string, io: WizardIO): Promise<WizardResult> {
+export async function runWizard(dir: string, io: WizardIO): Promise<Omit<WizardResult, 'transcript'>> {
   // step 0 — language first (per product decision: the very first question)
   const language = await io.choose<WizardLanguage>(ZH.step0, [
     { value: 'zh', label: ZH.langZh },
@@ -191,4 +191,41 @@ export async function runWizard(dir: string, io: WizardIO): Promise<WizardResult
   for (const s of t.nextSteps) io.note(`  - ${s}`);
 
   return { ok, language, engine, model };
+}
+
+/** Non-interactive variant for the web console / automation: answers arrive as values. */
+export interface WizardAnswers {
+  language: WizardLanguage;
+  engine: EngineName;
+  model: string;
+  customModel?: string;
+  modelToken: string;
+  gitToken?: string;
+}
+
+export async function runWizardFromAnswers(dir: string, a: WizardAnswers): Promise<WizardResult> {
+  const transcript: string[] = [];
+  const io: WizardIO = {
+    async choose(_q, options) {
+      const want = transcript.length === 0 ? a.language : transcript.length === 1 ? a.engine : a.model;
+      const hit = options.find((o) => o.value === want);
+      return hit ? hit.value : (options[0]?.value ?? '');
+    },
+    async secret() {
+      const secrets = transcript.filter((l) => l.startsWith('secret')).length + 1;
+      transcript.push('secret');
+      if (a.model === '__custom__') {
+        if (secrets === 1) return a.customModel ?? '';
+        if (secrets === 2) return a.modelToken;
+        return a.gitToken ?? '';
+      }
+      if (secrets === 1) return a.modelToken;
+      return a.gitToken ?? '';
+    },
+    note(m) {
+      transcript.push(m);
+    },
+  };
+  const result = await runWizard(dir, io);
+  return { ...result, transcript };
 }

@@ -34,6 +34,11 @@ buildingos compile --engine codex my-tenant
 
 # Conformance：编译产物 vs golden 引擎视图基线
 buildingos conformance my-tenant
+
+# 或打开 Web 控制台 —— 交互面（产品决定）：
+# 浏览器里的 向导 / 校验 / 编译 / Conformance 面板
+buildingos web
+# → http://127.0.0.1:4173
 ```
 
 ### `init` 之后租户长什么样
@@ -71,6 +76,7 @@ cd my-tenant && buildingos validate          # 向上搜索命中标记
 | 命令 | 作用 |
 |---|---|
 | `buildingos init <dir>` | 脚手架租户仓库（starter rules/skills/prompts/configs/knowledge + .gitignore） |
+| `buildingos web [--port N]` | **交互面**（产品决定）：打开控制台 SPA——向导 / 校验 / 编译 / Conformance 面板 |
 | `buildingos validate [root]` | 加载 + lint 租户：schema 校验、`ORDER_DUPLICATE`（D20）、`DEP_UNRESOLVED`（D3）、权限禁手写（D14）；有 error 时退出码非零 |
 | `buildingos compile --engine dsh\|codex [root] [--out <dir>]` | 从 TenantDocs 渲染引擎视图；默认写入 `engine-views/<engine>` |
 | `buildingos conformance [root]` | G1 编译黄金比对（需先有 `engine-views/`）；G2–G4 引擎门控，跳过 |

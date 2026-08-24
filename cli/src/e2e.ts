@@ -6,9 +6,9 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { runWizard } from '@buildingos/bootstrap';
+import type { WizardIO } from '@buildingos/bootstrap';
 import { main } from './cli.js';
-import type { WizardIO } from './io.js';
-import { runWizard } from './wizard.js';
 
 async function e2e(): Promise<number> {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'bos-e2e-'));

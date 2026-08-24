@@ -20,8 +20,10 @@
   "dependencies": {
     "@buildingos/adapter-codex": "workspace:*",
     "@buildingos/adapter-dsh": "workspace:*",
+    "@buildingos/bootstrap": "workspace:*",
     "@buildingos/conformance": "workspace:*",
-    "@buildingos/normalizer": "workspace:*"
+    "@buildingos/normalizer": "workspace:*",
+    "@buildingos/web": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

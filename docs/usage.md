@@ -34,6 +34,11 @@ buildingos compile --engine codex my-tenant
 
 # Conformance: compile output vs. the golden engine-views baseline
 buildingos conformance my-tenant
+
+# Or open the web console — the interaction surface (product decision):
+# wizard / validate / compile / conformance panels in the browser
+buildingos web
+# → http://127.0.0.1:4173
 ```
 
 ### What a tenant looks like after `init`
@@ -73,6 +78,7 @@ cd my-tenant && buildingos validate          # upward search finds the marker
 | Command | What it does |
 |---|---|
 | `buildingos init <dir>` | Scaffold a tenant repository (starter rules/skills/prompts/configs/knowledge + .gitignore) |
+| `buildingos web [--port N]` | **The interaction surface** (product decision): open the console SPA — wizard / validate / compile / conformance panels |
 | `buildingos validate [root]` | Load + lint a tenant: schema checks, `ORDER_DUPLICATE` (D20), `DEP_UNRESOLVED` (D3), permissions no-hand-write (D14); exit non-zero on errors |
 | `buildingos compile --engine dsh\|codex [root] [--out <dir>]` | Render the engine view from TenantDocs; writes files into `engine-views/<engine>` by default |
 | `buildingos conformance [root]` | G1 compile-parity against the golden baseline (needs `engine-views/` first); G2–G4 engine-gated, skipped |

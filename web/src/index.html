@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BuildingOS Console</title>
+<style>
+  :root { --bg:#0f1115; --panel:#161a22; --line:#262c38; --fg:#e6e9ef; --muted:#8b93a3; --accent:#4d9fff; --ok:#3fb27f; --err:#e5534b; --warn:#d29922; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.6 ui-sans-serif,system-ui,"Segoe UI",sans-serif; }
+  header { padding:16px 24px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:12px; }
+  header h1 { font-size:18px; margin:0; }
+  header .sub { color:var(--muted); font-size:12px; }
+  nav { display:flex; gap:4px; padding:0 24px; border-bottom:1px solid var(--line); }
+  nav button { background:none; border:none; color:var(--muted); padding:12px 16px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent; }
+  nav button.active { color:var(--fg); border-bottom-color:var(--accent); }
+  main { padding:20px 24px; max-width:900px; }
+  .panel { display:none; } .panel.active { display:block; }
+  label { display:block; margin:10px 0 4px; color:var(--muted); font-size:12px; }
+  input, select { width:100%; max-width:560px; padding:8px 10px; background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; font-size:14px; }
+  button.run { margin-top:16px; padding:9px 20px; background:var(--accent); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:14px; }
+  button.run:disabled { opacity:.5; cursor:wait; }
+  pre { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px; overflow:auto; white-space:pre-wrap; word-break:break-word; }
+  .ok { color:var(--ok); } .err { color:var(--err); } .warn { color:var(--warn); } .muted { color:var(--muted); }
+  details { border:1px solid var(--line); border-radius:6px; margin:6px 0; }
+  summary { padding:8px 12px; cursor:pointer; font-family:ui-monospace,monospace; font-size:12px; color:var(--accent); }
+  details pre { border:none; margin:0; max-height:360px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  td, th { border:1px solid var(--line); padding:6px 10px; text-align:left; }
+</style>
+</head>
+<body>
+<header>
+  <h1>BuildingOS Console</h1>
+  <span class="sub">交互层 = Web（产品决定）；后端 = 同一套 normalizer / adapters / conformance</span>
+</header>
+<nav>
+  <button data-tab="wizard" class="active">向导 Wizard</button>
+  <button data-tab="validate">校验 Validate</button>
+  <button data-tab="compile">编译 Compile</button>
+  <button data-tab="conformance">Conformance</button>
+</nav>
+<main>
+  <!-- wizard -->
+  <section class="panel active" id="wizard">
+    <label>租户目录 / Tenant directory (absolute path)</label>
+    <input id="w-dir" placeholder="/path/to/my-tenant" />
+    <label>语言 / Language</label>
+    <select id="w-lang"><option value="zh">中文</option><option value="en">English</option></select>
+    <label>引擎 / Engine</label>
+    <select id="w-engine"><option value="dsh">DeepSeek Harness (DSH)</option><option value="codex">OpenAI Codex harness</option></select>
+    <label>模型 / Model</label>
+    <select id="w-model"></select>
+    <label>模型 token / Model token（写入 .env，绝不进 Git，D21）</label>
+    <input id="w-token" type="password" />
+    <label>Git token（可留空跳过）/ Git token (may skip)</label>
+    <input id="w-git" type="password" />
+    <button class="run" id="w-run">运行向导 / Run wizard</button>
+    <pre id="w-out" class="muted">向导输出会显示在这里。</pre>
+  </section>
+
+  <!-- validate -->
+  <section class="panel" id="validate">
+    <label>工作区 / Workspace（含 .buildingos/ 的目录）</label>
+    <input id="v-ws" placeholder="/path/to/my-tenant" />
+    <button class="run" id="v-run">校验 / Validate</button>
+    <pre id="v-out" class="muted">diagnostics 显示在这里。</pre>
+  </section>
+
+  <!-- compile -->
+  <section class="panel" id="compile">
+    <label>工作区 / Workspace</label>
+    <input id="c-ws" placeholder="/path/to/my-tenant" />
+    <label>引擎 / Engine</label>
+    <select id="c-engine"><option value="dsh">dsh</option><option value="codex">codex</option></select>
+    <button class="run" id="c-run">编译 / Compile</button>
+    <div id="c-out"></div>
+  </section>
+
+  <!-- conformance -->
+  <section class="panel" id="conformance">
+    <label>工作区 / Workspace（需先编译双引擎生成 engine-views/）</label>
+    <input id="g-ws" placeholder="/path/to/my-tenant" />
+    <button class="run" id="g-run">运行 / Run</button>
+    <pre id="g-out" class="muted">G1 黄金比对结果显示在这里。</pre>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const MODEL = { dsh: ['deepseek-chat','deepseek-reasoner','gpt-4o'], codex: ['gpt-5.2-codex','gpt-5.1-codex-max','gpt-4o'] };
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// tabs
+document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === b.dataset.tab));
+}));
+
+// model list per engine
+function fillModels() {
+  $('w-model').innerHTML = MODEL[$('w-engine').value].map((m) => `<option value="${m}">${m}</option>`).join('');
+}
+$('w-engine').addEventListener('change', fillModels);
+fillModels();
+
+async function post(path, body) {
+  const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  return r.json();
+}
+
+// wizard
+$('w-run').addEventListener('click', async () => {
+  const btn = $('w-run'); btn.disabled = true;
+  try {
+    const r = await post('/api/wizard', {
+      dir: $('w-dir').value, language: $('w-lang').value, engine: $('w-engine').value,
+      model: $('w-model').value, modelToken: $('w-token').value, gitToken: $('w-git').value,
+    });
+    $('w-out').innerHTML = (r.transcript || []).map((l) => escapeHtml(l)).join('\n') + `\n\n<span class="${r.ok ? 'ok' : 'err'}">${r.ok ? 'WIZARD OK' : 'WIZARD FAILED'}</span>`;
+  } catch (e) { $('w-out').innerHTML = `<span class="err">${escapeHtml(e.message)}</span>`; }
+  btn.disabled = false;
+});
+
+// validate
+$('v-run').addEventListener('click', async () => {
+  const r = await post('/api/validate', { workspace: $('v-ws').value });
+  const lines = (r.diagnostics || []).map((d) => `[${d.severity.toUpperCase()}] ${d.code} ${d.file ? '(' + d.file + ')' : ''} ${d.message}`);
+  $('v-out').innerHTML = escapeHtml(lines.join('\n')) + `\n\n<span class="${r.ok ? 'ok' : 'err'}">${r.ok ? 'OK' : 'FAILED'}</span>`;
+});
+
+// compile
+$('c-run').addEventListener('click', async () => {
+  const r = await post('/api/compile', { workspace: $('c-ws').value, engine: $('c-engine').value });
+  if (!r.ok) { $('c-out').innerHTML = `<span class="err">${escapeHtml(r.error || 'failed')}</span>`; return; }
+  $('c-out').innerHTML = (r.files || []).map((f) =>
+    `<details><summary>${escapeHtml(f.path)}</summary><pre>${escapeHtml(f.content)}</pre></details>`).join('') || '<span class="muted">no files</span>';
+});
+
+// conformance
+$('g-run').addEventListener('click', async () => {
+  const r = await post('/api/conformance', { workspace: $('g-ws').value });
+  if (!r.ok) { $('g-out').innerHTML = `<span class="warn">${escapeHtml(r.error || 'failed')}</span>`; return; }
+  const lines = (r.results || []).map((x) => {
+    const st = x.skipped ? 'SKIP' : x.passed ? 'PASS' : 'FAIL';
+    let s = `[${st}] ${x.task} (${x.engine || '—'})`;
+    if (x.details && x.details.length) s += '\n    ' + x.details.join('\n    ');
+    return s;
+  });
+  $('g-out').innerHTML = escapeHtml(lines.join('\n'));
+});
+</script>
+</body>
+</html>
