@@ -1,7 +1,7 @@
 # BuildingOS 租户模型与数据边界（DRAFT v0.1）
 
 > 状态：DRAFT v0.1 —— 进入 M1 前的数据模型契约，是 §6 Adapter Contract 的 `compile()` 接口定义"**数据从哪来、往哪去**"的依据。
-> 关联：[契约哲学](../契约哲学.md) D16–D18；[api-contract.md](api-contract.md) §2 核心概念、§4.6 工具治理；[schemas/](../schemas/README.md) 家族。
+> 关联：[contract-philosophy_cn.md](contract-philosophy_cn.md) D16–D18；[api-contract.md](api-contract.md) §2 核心概念、§4.6 工具治理；[schemas/](../schemas/README.md) 家族。
 
 ## 1. 核心原则
 
@@ -109,6 +109,6 @@
 
 ## 8. 决策出处
 
-- [契约哲学](../契约哲学.md)：D16（三层数据）、D17（技能层级）、D18（工具四态）、D19（世界知识进仓库）
+- [contract-philosophy_cn.md](contract-philosophy_cn.md)：D16（三层数据）、D17（技能层级）、D18（工具四态）、D19（世界知识进仓库）
 - api-contract：§2 核心概念、§4.6 工具治理
 

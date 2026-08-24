@@ -2,7 +2,7 @@
 
 > 定位：compile 三段式流水线（解析校验 → 规范化 → 渲染）的**第 1、2 段**——把租户仓库的文档（kebab-case frontmatter）变成规范化的 TenantDocs（camelCase 模型，adapter-contract/v1）。
 > **引擎无关、纯函数、无副作用**——第 3 段（渲染）由各引擎适配器负责。
-> 关联：[adapter-contract.md](adapter-contract.md) §2、[schemas/](../schemas/README.md) 家族、[契约哲学](../契约哲学.md) D1–D20、[compile-verification.md](compile-verification.md)。
+> 关联：[adapter-contract.md](adapter-contract.md) §2、[schemas/](../schemas/README.md) 家族、[contract-philosophy_cn.md](contract-philosophy_cn.md) D1–D21、[compile-verification.md](compile-verification.md)。
 
 ## 1. 边界
 

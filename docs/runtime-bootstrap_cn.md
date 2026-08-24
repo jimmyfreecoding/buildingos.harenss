@@ -2,7 +2,7 @@
 
 > 定位：runtime 首启引导（bootstrap）与配置分层设计——写代码前的最后一个设计块，衔接 normalizer（加载租户文档）与 adapter（接引擎）。
 > 决策：b1 配置三分（D21）/ b2 秘密 M1 env 注入 + M2 secret store / b3 M1 CLI 向导（admin web 归 M3）/ b4 dev 与 prod 同一 runtime 双姿态。
-> 关联：[configs.schema](../schemas/configs.schema.md)、[normalizer-design.md](normalizer-design.md)、[tenancy-model.md](tenancy-model.md)、[契约哲学](../契约哲学.md) D21。
+> 关联：[configs.schema](../schemas/configs.schema.md)、[normalizer-design.md](normalizer-design.md)、[tenancy-model.md](tenancy-model.md)、[contract-philosophy_cn.md](contract-philosophy_cn.md) D21。
 
 ## 1. 配置三分（D21，铁律：钥匙不进仓库）
 

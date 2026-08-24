@@ -168,4 +168,4 @@ During M0 we fixed the shape of every document that lives in a tenant repository
 | `docs/tenancy-model.md` | Tenancy model and data boundaries (D16–D19) |
 | `docs/api-contract.md` | Appendix A (engine research), §4.6 (tool governance) |
 
-> 中文版：**契约哲学（中文）** 见 [contract-philosophy_cn.md](contract-philosophy_cn.md)。
+> 中文版：见 [contract-philosophy_cn.md](contract-philosophy_cn.md)。

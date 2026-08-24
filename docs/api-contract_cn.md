@@ -526,7 +526,7 @@ policy:
 | v0.7 | M0 产出补充：[examples/skills/network-diagnose](../examples/skills/network-diagnose/SKILL.md)（skill schema 验收用例，含三视图编译演示）与 [rules.schema.*](../schemas/rules.schema.md)（规则文档规范：AGENTS.md 层级映射 + hard/soft 落地） |
 | v0.8 | rules 评审 4 决策落定（生成式 permission / 允许多段落 / applies-to 预留 / 可否违反判据）；skill 新增 `data:` 字段（租户数据依赖，示例验收暴露）；新增 [prompts.schema.*](../schemas/prompts.schema.md) |
 | v0.9 | prompts 评审 3 决策落定（合并式多人格 / 半结构化 / 会话级注入）；新增 [configs.schema.*](../schemas/configs.schema.md) 与 [examples/configs/runtime.yaml](../examples/configs/runtime.yaml)——**M0 schema 家族齐备** |
-| v1.0 | **M0 收官**：configs 评审 3 决策落定（统一词汇 / 无例外通道 / memory 占位）；新增 [契约哲学.md](../契约哲学.md)（M0 全部 15 条决策的人话版备忘录，D1–D15） |
+| v1.0 | **M0 收官**：configs 评审 3 决策落定（统一词汇 / 无例外通道 / memory 占位）；新增 [contract-philosophy.md](../docs/contract-philosophy.md)（M0 全部决策的人话版备忘录，D1–D21） |
 | v1.1 | 新增 [tenancy-model.md](tenancy-model.md)（三层数据边界 / 技能层级 / 工具四态，D16–D18）；§2 核心概念新增 User；新增 §4.6 工具治理 |
 | v1.2 | tenancy-model 细化世界知识文档（D19：仓库 = 大脑 + 世界模型；toB `knowledge/` / toC `users/<uid>/` + 量级降级；知识文档先自由格式，M1 验证后再定 schema） |
 | v1.3 | **M1 开工**：新增 [adapter-contract.md](adapter-contract.md)（§6 字段级细化：TenantDocs / EngineView / 四张映射表 / 事件归一化 / conformance 判定表 G1–G4 / 适配器生命周期 / 实施清单）；AgentEvent 扩展 9 类（新增 approval.request、user.input.request） |

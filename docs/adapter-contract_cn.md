@@ -2,7 +2,7 @@
 
 > 状态：M1 设计稿 v0.4 —— api-contract §6 的**字段级细化**，目标是让 `compile()` / `run()` 可以真正实现。
 > v0.2：首轮 compile 实弹验证；v0.3：类型定义落成 JSON Schema + D20；v0.4：校验与规范化模块设计（[normalizer-design.md](normalizer-design.md)）。
-> 关联：[api-contract.md](api-contract.md) §6（框架）、[tenancy-model.md](tenancy-model.md)（数据从哪来）、[schemas/](../schemas/README.md)（文档 schema 家族）、[契约哲学](../契约哲学.md)（D1–D19）。
+> 关联：[api-contract.md](api-contract.md) §6（框架）、[tenancy-model.md](tenancy-model.md)（数据从哪来）、[schemas/](../schemas/README.md)（文档 schema 家族）、[contract-philosophy_cn.md](contract-philosophy_cn.md)（D1–D21）。
 > 本稿不包含任何适配器实现；DSH / Codex 的具体接入在 M1 实施阶段完成。
 
 ## 1. 目标与非目标

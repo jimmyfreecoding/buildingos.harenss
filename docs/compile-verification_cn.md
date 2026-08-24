@@ -38,7 +38,7 @@
 | # | 校准点 | 影响 | 处置 |
 |---|---|---|---|
 | C1 | Codex `openai.yaml` `interface` 的 key 形态：按 snake_case 生成（`display_name`），但 metadata.rs 的 serde 未显式可见 rename，测试夹具未覆盖 interface 字段 | Codex 若期望 camelCase，interface 会静默失效 | 收录版本时用真实 `codex mcp-server`/skills 加载验证后冻结 |
-| C2 | **跨家族合并顺序** | ✅ 已解决（D20）：order 全局统一编号空间，重号 lint 报错；示例 persona 改 order 30（10/20/30） | 决策 D20（契约哲学 §6） |
+| C2 | **跨家族合并顺序** | ✅ 已解决（D20）：order 全局统一编号空间，重号 lint 报错；示例 persona 改 order 30（10/20/30） | 决策 D20（contract-philosophy_cn.md §6） |
 | C3 | DSH 侧 system-prompt / mcp-client 的 cordis.yml 具体配置键形态（当前为中间表示） | 实施接线时才需要 | 实施 DSH adapter 时以真实 cordis 配置校准 |
 
 ## 4. 附带收益

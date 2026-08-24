@@ -21,7 +21,7 @@
 | `dependencies` 边界 | 分层：runtime.yaml = 注册目录 / skill = 引用清单；CI 校验引用可解析 |
 | 扁平 `<name>.md` | 仅导入兼容，导入自动提升为目录束；canonical 唯一形态 = 目录束 |
 
-> **M0 全部 15 条决策的人话版备忘录见 [契约哲学.md](../契约哲学.md)**（含每条决策的"为什么"与代价，按 D1–D15 编号）。
+> **M0 全部决策（D1–D21）的人话版备忘录见 [contract-philosophy_cn.md](../docs/contract-philosophy_cn.md)**（含每条决策的"为什么"与代价）。
 
 ## Schema 家族
 
