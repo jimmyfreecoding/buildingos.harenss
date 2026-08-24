@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://buildingos.ai/schemas/contract/adapter-contract.schema.json",
+  "title": "BuildingOS Adapter Contract v1",
+  "description": "Machine-validatable definition of adapter-contract/v1 (M1). Corresponds to docs/adapter-contract.md §2–§5: TenantDocs (compile input), EngineView (compile output), RunRequest, AgentEvent (run event normalization). Naming: camelCase normalized model (distinct from tenant-document frontmatter's kebab-case — normalization completes in pipeline stage 2).",
+  "$ref": "#/$defs/TenantDocs",
+  "$defs": {
+    "ToolRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "type": "string", "description": "Tool type (e.g., mcp)." },
+        "value": { "type": "string", "description": "Tool reference; must resolve in RuntimeConfig.mcpServers (CI cross-check)." }
+      }
+    },
+    "PermissionFragment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effect", "resource"],
+      "properties": {
+        "effect": { "type": "string", "enum": ["allow", "deny"] },
+        "resource": { "type": "string", "description": "Resource pattern (write:router, data:*:external, etc.); derives RuntimeConfig permission entries." }
+      }
+    },
+    "SkillDoc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "invocation"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 64 },
+        "description": { "type": "string", "minLength": 1 },
+        "whenToUse": { "type": "string" },
+        "metadata": {
+          "type": "object",
+          "description": "Open object; x-buildingos reserved for cross-engine lossless carry (D2/D4/D19).",
+          "additionalProperties": true
+        },
+        "ui": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "displayName": { "type": "string" },
+            "shortDescription": { "type": "string" },
+            "iconSmall": { "type": "string" },
+            "iconLarge": { "type": "string" },
+            "brandColor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+            "defaultPrompt": { "type": "string" }
+          }
+        },
+        "invocation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "model": { "type": "boolean", "default": true },
+            "user": { "type": "boolean", "default": true },
+            "implicit": { "type": "boolean", "default": true }
+          }
+        },
+        "products": { "type": "array", "items": { "type": "string" } },
+        "dependencies": { "type": "array", "items": { "$ref": "#/$defs/ToolRef" } },
+        "references": { "type": "array", "items": { "type": "string" } },
+        "scripts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Relative paths of scripts under the skill's scripts/ directory (N1 settled: modeled). Codex implicit invocation semantics; DSH ignores but preserves. Path existence is verified only — never executed, never injected into context."
+        },
+        "data": { "type": "array", "items": { "type": "string" } },
+        "body": { "type": "string" }
+      }
+    },
+    "RuleDoc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "scope", "enforce", "order", "enabled", "sections"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 64 },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "scope": { "type": "string", "enum": ["all", "tools", "session", "surface"] },
+        "enforce": { "type": "string", "enum": ["hard", "soft"] },
+        "permission": { "$ref": "#/$defs/PermissionFragment", "description": "Required when enforce=hard (if-then validation, D6 generative)." },
+        "order": { "type": "integer", "default": 100, "description": "One global numbering space (D20); duplicates rejected by CI." },
+        "appliesTo": { "type": "string", "description": "Reserved in M0; compile ignores (D8)." },
+        "enabled": { "type": "boolean", "default": true },
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["heading", "body"],
+            "properties": {
+              "heading": { "type": "string" },
+              "body": { "type": "string" }
+            }
+          }
+        }
+      },
+      "if": { "properties": { "enforce": { "const": "hard" } } },
+      "then": { "required": ["permission"] }
+    },
+    "PromptDoc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "language", "order", "enabled", "body"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 64 },
+        "language": { "type": "string", "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$", "default": "zh-CN" },
+        "tone": { "type": "string" },
+        "order": { "type": "integer", "default": 100, "description": "One global numbering space (D20)." },
+        "enabled": { "type": "boolean", "default": true },
+        "body": { "type": "string" }
+      }
+    },
+    "McpServerReg": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "transport"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "transport": { "type": "string", "enum": ["stdio", "http"] },
+        "command": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "env": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "RuntimeConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "engine"],
+      "properties": {
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+$" },
+        "engine": { "type": "string", "enum": ["dsh", "codex"] },
+        "model": { "type": "string" },
+        "mcpServers": { "type": "array", "items": { "$ref": "#/$defs/McpServerReg" } },
+        "sandbox": { "type": "string", "enum": ["read-only", "workspace-write", "danger-full-access"], "default": "read-only" },
+        "approval": { "type": "string", "enum": ["never", "on-request", "unless-trusted"], "default": "on-request" },
+        "ui": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "theme": { "type": "string" },
+            "surfaces": { "type": "array", "items": { "type": "string", "enum": ["web", "mobile", "voice"] } }
+          }
+        },
+        "memory": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": { "type": "string", "enum": ["mcp-memory", "codex-native"], "description": "Placeholder declaration (D15); concrete fields after M1 research." }
+          }
+        }
+      }
+    },
+    "KnowledgeDoc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "content"],
+      "properties": {
+        "path": { "type": "string" },
+        "content": { "type": "string", "description": "Free-form Markdown (D19, t3)." }
+      }
+    },
+    "TenantDocs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skills", "rules", "prompts", "config", "knowledge"],
+      "properties": {
+        "skills": { "type": "array", "items": { "$ref": "#/$defs/SkillDoc" } },
+        "rules": { "type": "array", "items": { "$ref": "#/$defs/RuleDoc" } },
+        "prompts": { "type": "array", "items": { "$ref": "#/$defs/PromptDoc" } },
+        "config": { "$ref": "#/$defs/RuntimeConfig" },
+        "knowledge": { "type": "array", "items": { "$ref": "#/$defs/KnowledgeDoc" } }
+      }
+    },
+    "GeneratedFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "content", "kind"],
+      "properties": {
+        "path": { "type": "string" },
+        "content": { "type": "string" },
+        "kind": { "type": "string", "enum": ["skill", "rule", "prompt", "config", "knowledge"] }
+      }
+    },
+    "EngineView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "files"],
+      "properties": {
+        "engine": { "type": "string", "enum": ["dsh", "codex"] },
+        "files": { "type": "array", "items": { "$ref": "#/$defs/GeneratedFile" } },
+        "runtimeConfig": {
+          "type": "object",
+          "description": "In-memory mode (headless direct config, no files written); structure calibrated during adapter implementation (adapter-contract §9)."
+        }
+      }
+    },
+    "RunRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "tenantId", "intent", "skills", "permissions"],
+      "properties": {
+        "sessionId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "intent": { "type": "string" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "context": {
+          "type": "object",
+          "description": "Dynamic context slice (tenancy-model data flow); field-level definition settles with M1 dynamic context assembly.",
+          "additionalProperties": true
+        },
+        "permissions": {
+          "type": "object",
+          "description": "Permission set (derived from hard rules); structure calibrated with the DSH/Codex policy layers.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "AgentEvent": {
+      "type": "object",
+      "oneOf": [
+        { "required": ["type", "ts", "payload"], "properties": { "type": { "const": "thought" }, "ts": { "type": "string" }, "payload": { "type": "object", "required": ["text"], "properties": { "text": { "type": "string" } }, "additionalProperties": false } } },
+        { "required": ["type", "ts", "payload"], "properties": { "type": { "const": "tool.call" }, "ts": { "type": "string" }, "payload": { "type": "object", "required": ["tool", "args"], "properties": { "tool": { "type": "string" }, "args": {} }, "additionalProperties": false } } },
+        { "required": ["type", "ts", "payload"], "properties": { "type": { "const": "tool.result" }, "ts": { "type": "string" }, "payload": { "type": "object", "required": ["tool", "ok"], "properties": { "tool": { "type": "string" }, "ok": { "type": "boolean" }, "result": {} }, "additionalProperties": false } } },
+        { "required": ["type", "ts", "payload"], "properties": { "type": { "const": "step" }, "ts": { "type": "string" }, "payload": { "type": "object", "required": ["step"], "properties": { "step": { "type": "string" }, "summary": { "type": "string" } }, "additionalProperties": false } } },
+        { "required": ["type", "ts", "payload"], "properties": { "type": { "const": "message" }, "ts": { "type": "string" }, "payload": { "type": "object", "required": ["text"], "properties": { "text": { "type": "string" } }, "additionalProperties": false } } },
+        { "required": ["type", "ts", "payload"], "properties": { "type": { "const": "artifact" }, "ts": { "type": "string" }, "payload": { "type": "object", "required": ["type", "data"], "properties": { "type": { "type": "string" }, "data": {} }, "additionalProperties": false } } },
+        { "required": ["type", "ts", "payload"], "properties": { "type": { "const": "error" }, "ts": { "type": "string" }, "payload": { "type": "object", "required": ["code", "message"], "properties": { "code": { "type": "string" }, "message": { "type": "string" } }, "additionalProperties": false } } },
+        { "required": ["type", "ts", "payload"], "properties": { "type": { "const": "approval.request" }, "ts": { "type": "string" }, "payload": { "type": "object", "required": ["id", "description"], "properties": { "id": { "type": "string" }, "description": { "type": "string" }, "options": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": false } } },
+        { "required": ["type", "ts", "payload"], "properties": { "type": { "const": "user.input.request" }, "ts": { "type": "string" }, "payload": { "type": "object", "required": ["id", "question"], "properties": { "id": { "type": "string" }, "question": { "type": "string" }, "options": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": false } } }
+      ]
+    }
+  }
+}

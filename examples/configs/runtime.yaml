@@ -1,0 +1,18 @@
+# 示例租户配置（configs.schema 草案）
+
+version: "0.1"
+engine: dsh            # dsh | codex（引擎可插拔）
+model: gpt-4o          # 供应商无关句柄
+mcp_servers:
+  - name: telemetry
+    transport: stdio
+    command: npx telemetry-mcp
+sandbox: read-only     # read-only | workspace-write | danger-full-access（只读默认）
+approval: on-request   # never | on-request | unless-trusted
+ui:
+  theme: dark
+  surfaces: [web, mobile]
+memory:
+  provider: mcp-memory
+# permissions 不在此手写：由 rules/ 的 hard 规则派生（rules.schema §4 生成式）
+# 本示例的 skills/network-diagnose 引用 mcp_servers.telemetry（CI 交叉校验）

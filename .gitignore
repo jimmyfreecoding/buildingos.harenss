@@ -1,0 +1,19 @@
+# Secrets — never commit (D21: keys never enter the repository)
+.env
+.env.*
+!.env.example
+
+# Node / TypeScript (M1 implementation)
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

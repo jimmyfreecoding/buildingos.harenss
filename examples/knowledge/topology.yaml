@@ -1,0 +1,26 @@
+# 网络拓扑数据（knowledge/topology.yaml）
+
+# 租户世界模型的机器可读部分（被 skills/network-diagnose 的 data: 引用）
+
+switches:
+  - id: SW-01
+    role: core
+    uplink: RT-01
+    baseline: { p95_latency_ms: 20 }
+  - id: SW-02
+    role: distribution
+    uplink: SW-01
+  - id: SW-03
+    role: access
+    uplink: SW-02
+    baseline: { p95_latency_ms: 50, packet_loss_pct: 0.5 }
+    hotspots: [uplink.light_module, poe.port12]
+
+aps:
+  - id: AP-05
+    coverage: factory-2
+    baseline: { online_rate: 0.999 }
+
+links:
+  - { from: SW-01, to: SW-02, bandwidth: "10G" }
+  - { from: SW-02, to: SW-03, bandwidth: "1G" }

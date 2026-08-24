@@ -1,0 +1,18 @@
+# 由 BuildingOS compile() 生成（adapter-contract §4.1 映射）
+# 来源：examples/skills/network-diagnose/SKILL.md（ui: / invocation.implicit / dependencies）
+
+interface:
+  display_name: 网络诊断
+  short_description: 快速定位网络故障
+  brand_color: '#2563EB'
+  default_prompt: 帮我诊断一下网络问题
+
+policy:
+  allow_implicit_invocation: false
+
+dependencies:
+  tools:
+    - type: mcp
+      value: telemetry
+      transport: stdio        # 由 configs/runtime.yaml 派生（Q3 分层：skill 只写引用）
+      command: npx telemetry-mcp

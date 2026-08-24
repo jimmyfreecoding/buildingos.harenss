@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://buildingos.ai/schemas/rules.schema.json",
+  "title": "BuildingOS Rules Document frontmatter",
+  "description": "BuildingOS Rules (the constitution: behavior boundaries and constraints) frontmatter schema (M0 draft). Compiles to Codex (hierarchical AGENTS.md sections / AGENTS.override.md) and DSH (system-prompt sections + sandbox/approval knobs). Based on docs/api-contract.md Appendix A.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 64,
+      "description": "Rule identifier. kebab-case, unique within the tenant."
+    },
+    "title": {
+      "type": "string",
+      "description": "Rule title; maps to the Codex AGENTS.md section heading / DSH section name."
+    },
+    "description": {
+      "type": "string",
+      "description": "Rule purpose note (into index and review; not necessarily into the model prompt)."
+    },
+    "scope": {
+      "type": "string",
+      "enum": ["all", "tools", "session", "surface"],
+      "default": "all",
+      "description": "Rule scope; decides assembly placement."
+    },
+    "enforce": {
+      "type": "string",
+      "enum": ["hard", "soft"],
+      "default": "soft",
+      "description": "hard = must carry a permission fragment; compile derives runtime.yaml permissions (generative, Q1 settled). soft = prompt guidance only."
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effect", "resource"],
+      "properties": {
+        "effect": {
+          "type": "string",
+          "enum": ["allow", "deny"],
+          "description": "Allow or deny."
+        },
+        "resource": {
+          "type": "string",
+          "description": "Resource pattern, sharing the runtime.yaml permissions vocabulary (e.g., write:router, data:*:external)."
+        }
+      },
+      "description": "Machine-readable permission fragment (Q1 settled: generative). Required when enforce is hard; co-existing with enforce: soft is a lint error (CI cross-check)."
+    },
+    "order": {
+      "type": "integer",
+      "default": 100,
+      "description": "Assembly order, lower first; one global numbering space (D20): shared with prompts, duplicates rejected by lint. AGENTS.md section order / DSH section order."
+    },
+    "applies-to": {
+      "type": "string",
+      "description": "Applicable surface (e.g., ops-engineer). Reserved in M0, compile ignores (Q3 settled); on import, a Codex subdirectory AGENTS.md maps to its directory name."
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "false → skipped in compile."
+    },
+    "references": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Related document paths (existence verified by lint)."
+    }
+  }
+}

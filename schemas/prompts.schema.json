@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://buildingos.ai/schemas/prompts.schema.json",
+  "title": "BuildingOS Prompts Document frontmatter",
+  "description": "BuildingOS Prompts (persona: character, tone, response style) frontmatter schema (M0 draft). Compiles to Codex (developer instructions / personality-template-isomorphic documents) and DSH (system-prompt persona sections). Based on docs/api-contract.md Appendix A.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 64,
+      "description": "Persona identifier. kebab-case, unique within the tenant."
+    },
+    "title": {
+      "type": "string",
+      "description": "Persona title."
+    },
+    "description": {
+      "type": "string",
+      "description": "Purpose note (into index and review; not necessarily into the model prompt)."
+    },
+    "language": {
+      "type": "string",
+      "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+      "default": "zh-CN",
+      "description": "Output language (simplified BCP-47). DSH language setting; folded into developer instructions text on Codex."
+    },
+    "tone": {
+      "type": "string",
+      "description": "Tone hint (e.g., professional, concise). Folded into the persona body."
+    },
+    "order": {
+      "type": "integer",
+      "default": 100,
+      "description": "Assembly/merge order, lower first. Multi-persona merges by this (Q1 settled); one global numbering space shared with rules (D20). DSH system-prompt persona section order; Codex developer instructions composition order."
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "false → skipped in compile."
+    },
+    "references": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Related document paths (existence verified by lint)."
+    }
+  }
+}

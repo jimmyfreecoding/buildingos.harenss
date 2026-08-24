@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://buildingos.ai/schemas/configs.schema.json",
+  "title": "BuildingOS runtime.yaml",
+  "description": "BuildingOS tenant runtime-parameter schema (M0 draft) — the single source of truth for tool registration (Q3 layering) plus engine/model/interface selection. Compiles to Codex config.toml and DSH cordis.yml/presets. Based on docs/api-contract.md Appendix A.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "engine"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version."
+    },
+    "engine": {
+      "type": "string",
+      "enum": ["dsh", "codex"],
+      "description": "Adopted engine (engines are pluggable). Adopting a new engine is a community review (M4+); the enum is extended then."
+    },
+    "model": {
+      "type": "string",
+      "description": "Provider-agnostic model handle. → Codex model; → DSH model configuration."
+    },
+    "mcp_servers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "transport"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Server name, unique within the tenant; skills' dependencies.value references this name."
+          },
+          "transport": {
+            "type": "string",
+            "enum": ["stdio", "http"]
+          },
+          "command": {
+            "type": "string",
+            "description": "Launch command for stdio transport."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Endpoint for http transport."
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Environment variable overrides (sensitive values never enter Git; injected at deployment — D21)."
+          }
+        }
+      },
+      "description": "MCP server registration (Q3 layering: the single source of truth). All skills' dependencies.value must resolve here (bidirectional CI check)."
+    },
+    "sandbox": {
+      "type": "string",
+      "enum": ["read-only", "workspace-write", "danger-full-access"],
+      "default": "read-only",
+      "description": "Sandbox mode, unified vocabulary (same names as Codex sandbox_mode; maps to the DSH sandbox knob). Read-only by default."
+    },
+    "approval": {
+      "type": "string",
+      "enum": ["never", "on-request", "unless-trusted"],
+      "default": "on-request",
+      "description": "Approval policy, unified vocabulary (→ Codex approval_policy; → DSH approval policy)."
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "theme": { "type": "string" },
+        "surfaces": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["web", "mobile", "voice"] }
+        }
+      },
+      "description": "Dynamic-UI rendering parameters (consumed by M3; BuildingOS layer, not mapped to engines)."
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["mcp-memory", "codex-native"],
+          "description": "Memory service choice. Placeholder declaration only (D15); concrete fields after M1 research (Appendix A.7.3)."
+        }
+      }
+    }
+  }
+}

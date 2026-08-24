@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://buildingos.ai/schemas/skill.schema.json",
+  "title": "BuildingOS Skill Document frontmatter",
+  "description": "BuildingOS unified Skill document frontmatter schema (M0 draft). Superset design: compiles to DSH (SKILL.md frontmatter + resourceBase) and Codex (SKILL.md frontmatter + openai.yaml + references/). Based on the engine research in docs/api-contract.md Appendix A.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "description"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 64,
+      "description": "Skill name. kebab-case, at most 64 characters (identical constraint in the DSH / Codex parsers)."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Routing description. Required, non-empty, single line (required by both engine parsers)."
+    },
+    "when-to-use": {
+      "type": "string",
+      "description": "Optional routing hint; maps to DSH whenToUse."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Open metadata object. The known key short-description is consumed by Codex; x-buildingos is reserved for cross-engine lossless carry (M0 settled).",
+      "properties": {
+        "short-description": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "ui": {
+      "type": "object",
+      "description": "Display metadata (M0 settled, top-level block). 1:1 mapping to Codex openai.yaml interface; carried via metadata.x-buildingos.ui on DSH. The M3 UI-Skill vocabulary inherits it.",
+      "additionalProperties": false,
+      "properties": {
+        "display-name": { "type": "string" },
+        "short-description": { "type": "string" },
+        "icon-small": { "type": "string" },
+        "icon-large": { "type": "string" },
+        "brand-color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "default-prompt": { "type": "string" }
+      }
+    },
+    "invocation": {
+      "type": "object",
+      "description": "Unified invocation policy. compile() maps bidirectionally to DSH frontmatter and Codex openai.yaml policy.",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "boolean",
+          "default": true,
+          "description": "Model-invocable. false → DSH disable-model-invocation: true."
+        },
+        "user": {
+          "type": "boolean",
+          "default": true,
+          "description": "User-invocable. false → DSH user-invocable: false."
+        },
+        "implicit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Implicit invocation (running a script / reading a document triggers the skill). false → Codex policy.allow_implicit_invocation: false; DSH runtime-ignores and carries it losslessly via metadata.x-buildingos.invocation-implicit (M0 settled)."
+        }
+      }
+    },
+    "products": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Product-gating list, mapped to Codex policy.products."
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "Skill-level tool reference list (M0 settled layering: registration lives in configs/runtime.yaml; only references are written here). Maps to Codex openai.yaml dependencies.",
+      "additionalProperties": false,
+      "properties": {
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "value"],
+            "properties": {
+              "type": { "type": "string", "description": "Tool type (e.g., mcp)." },
+              "value": { "type": "string", "description": "Tool reference; must resolve in configs/runtime.yaml (CI check)." },
+              "description": { "type": "string" },
+              "transport": { "type": "string", "description": "Import-compatible field; omitted in canonical new documents, derived from runtime.yaml by compile." },
+              "command": { "type": "string", "description": "Import-compatible field; omitted in canonical documents, derived from runtime.yaml." },
+              "url": { "type": "string", "format": "uri", "description": "Import-compatible field; omitted in canonical documents, derived from runtime.yaml." },
+              "oauth": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "callback_port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Resources referenced from the body (bundle-relative paths or URLs). DSH resourceBase / Codex references/."
+    },
+    "data": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tenant data dependencies (M0 settled: distinct from references — references = skill-owned resources, data = tenant data file paths). Not in the engine view; CI verifies path existence; dynamic context assembly uses it."
+    }
+  }
+}

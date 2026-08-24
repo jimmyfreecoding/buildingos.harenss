@@ -1,0 +1,9 @@
+# 由 BuildingOS compile() 生成（adapter-contract §4.4 映射）
+# 来源：examples/configs/runtime.yaml（engine: dsh —— 编译目标引擎切换为 codex 时生成此文件）
+
+model = "gpt-4o"
+sandbox_mode = "read-only"
+approval_policy = "on-request"
+
+[mcp_servers.telemetry]
+command = "npx telemetry-mcp"
