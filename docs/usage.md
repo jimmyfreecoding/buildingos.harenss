@@ -122,7 +122,28 @@ buildingos serve --prod    # production companion (M5.5): same runtime, ops post
 
 Until the runtime lands, everything above the dotted line — document model, schemas, compile mapping, conformance — is exercised by the four CLI commands.
 
-## 5. Honest status
+## 5. Testing the current state
+
+One command verifies everything (48 unit/acceptance tests + the full CLI E2E loop):
+
+```bash
+pnpm verify        # typecheck → build → test → e2e demo
+# or piecemeal:
+pnpm check                          # typecheck + build + test (all packages)
+pnpm --filter @buildingos/cli demo  # init(wizard) → validate → compile dsh/codex → conformance
+```
+
+| Package | Tests | What they cover |
+|---|---|---|
+| `@buildingos/normalizer` | 15 | frontmatter extraction (warn-and-skip), five-family loaders, normalization (kebab→camel, defaults, persona merge D10, permission derivation D6), set-level lint (`ORDER_DUPLICATE` D20, `DEP_UNRESOLVED` D3, `PERMISSIONS_HAND_WRITTEN` D14, path checks D5/D19), contract gate, crafted negative tenant |
+| `@buildingos/adapter-dsh` | 6 | compile() renders the DSH view; golden-output parity (frontmatter semantics + body), `metadata.x-buildingos` lossless carry (D2/D4), system-prompt sections by order (D20), run() pending bridge |
+| `@buildingos/adapter-codex` | 6 | compile() renders the Codex view; golden-output parity (SKILL.md parser-consumed fields, openai.yaml semantic match, AGENTS.md order, config.toml D13) |
+| `@buildingos/conformance` | 3 | G1 compile-parity against golden engine-views (both engines), tenant-error surfacing, G2–G4 engine-gated skeletons |
+| `@buildingos/cli` | 18 | first-boot wizard (language first, engine/model/credentials/git, `.env` D21, `.env.example`), workspace resolution (flag/env/upward-search/error), validate/compile/conformance commands |
+
+**How to add a test**: put a `*.test.ts` in the package's `tests/` (fixtures: `examples/` for acceptance, crafted temp dirs for negative cases), then `pnpm --filter <pkg> test`. The golden engine-views are the byte/semantic baseline for compile (conformance G1).
+
+## 6. Honest status
 
 - **Works today**: `init` / `validate` / `compile` / `conformance` — the full document→engine-view pipeline with machine-verified golden outputs.
 - **Pending**: the `run()` event bridges (DSH: ACP vs. in-process cordis; Codex: `codex mcp-server` validation — adapter-contract §9), the runtime CLI wizard, Docker/K8s packaging (M1.5), Git webhooks (M2), dynamic UI (M3), project wizard (M5), production companion (M5.5).

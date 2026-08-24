@@ -120,7 +120,28 @@ buildingos serve --prod    # 生产伴生（M5.5）：同一 runtime 的运维�
 
 在 runtime 落地之前，虚线以上的一切——文档模型、schema、编译映射、conformance——都由这四个 CLI 命令实测。
 
-## 5. 诚实状态
+## 5. 测试当前状态
+
+一条命令验证全部（48 个单元/验收测试 + 完整 CLI 端到端流程）：
+
+```bash
+pnpm verify        # typecheck → build → test → e2e demo
+# 或分步：
+pnpm check                          # typecheck + build + test（全部包）
+pnpm --filter @buildingos/cli demo  # init(向导) → validate → compile dsh/codex → conformance
+```
+
+| 包 | 测试数 | 覆盖 |
+|---|---|---|
+| `@buildingos/normalizer` | 15 | frontmatter 提取（warn-and-skip）、五家族 loader、规范化（kebab→camel、默认值、人格合并 D10、权限派生 D6）、集合级 lint（`ORDER_DUPLICATE` D20、`DEP_UNRESOLVED` D3、`PERMISSIONS_HAND_WRITTEN` D14、路径检查 D5/D19）、输出门禁、构造的负面租户 |
+| `@buildingos/adapter-dsh` | 6 | compile() 渲染 DSH 视图；golden 黄金比对（frontmatter 语义+正文）、`metadata.x-buildingos` 无损携带（D2/D4）、system-prompt sections 按 order（D20）、run() 待桥 |
+| `@buildingos/adapter-codex` | 6 | compile() 渲染 Codex 视图；golden 黄金比对（SKILL.md parser 消费字段、openai.yaml 语义、AGENTS.md 顺序、config.toml D13） |
+| `@buildingos/conformance` | 3 | G1 编译黄金比对（双引擎）、租户错误上抛、G2–G4 引擎门控骨架 |
+| `@buildingos/cli` | 18 | 首启向导（语言优先、引擎/模型/凭证/git、`.env` D21、`.env.example`）、workspace 解析（flag/env/向上搜索/报错）、validate/compile/conformance 命令 |
+
+**如何加测试**：在包的 `tests/` 放 `*.test.ts`（夹具：`examples/` 做验收用例，临时构造目录做负面用例），然后 `pnpm --filter <包名> test`。golden engine-views 是 compile 的字节/语义基线（conformance G1）。
+
+## 6. 诚实状态
 
 - **今天可用**：`init` / `validate` / `compile` / `conformance`——完整的"文档 → 引擎视图"流水线，golden 产物全程机器验证。
 - **待实现**：`run()` 事件桥（DSH：ACP vs 进程内 cordis；Codex：`codex mcp-server` 验证——adapter-contract §9）、runtime CLI 向导、Docker/K8s 打包（M1.5）、Git webhook（M2）、动态 UI（M3）、项目向导（M5）、生产伴生（M5.5）。
