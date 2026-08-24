@@ -6,7 +6,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    dependencies:
+      '@buildingos/cli':
+        specifier: workspace:*
+        version: link:cli
 
   adapters/codex:
     dependencies:
