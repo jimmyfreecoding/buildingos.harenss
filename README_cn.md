@@ -172,29 +172,29 @@ BuildingOS 不只是运行你的 AI Server——Harness 还负责构建它周围
 
 ```mermaid
 flowchart TB
-    subgraph A [交互层 Surface]
-        UI[动态生成 UI<br>来自预置 UI Skill 与编码规则<br>全是文档，零代码]
+    subgraph A ["交互层 Surface"]
+        UI["动态生成 UI<br>来自预置 UI Skill 与编码规则<br>全是文档，零代码"]
     end
 
-    subgraph B [BuildingOS Runtime<br>集成与编排]
+    subgraph B ["BuildingOS Runtime<br>集成与编排"]
         direction LR
-        ORCH[编排与治理<br>租户 / 上下文装配 / 权限策略]
-        AD[Harness 适配器<br>DSH 适配器 | Codex 适配器 | 更多]
+        ORCH["编排与治理<br>租户 / 上下文装配 / 权限策略"]
+        AD["Harness 适配器<br>DSH 适配器 | Codex 适配器 | 更多"]
     end
 
-    subgraph E [现有 Harness 引擎]
-        DSH[DeepSeek Harness - DSH]
-        CX[Codex Harness]
-        ETC[... 更多引擎]
+    subgraph E ["现有 Harness 引擎"]
+        DSH["DeepSeek Harness - DSH"]
+        CX["Codex Harness"]
+        ETC["... 更多引擎"]
     end
 
-    subgraph C [治理与配置层 Git-Native Brain]
-        G[(客户私有 Git 仓库<br>一个租户一个仓库)]
-        subgraph G_content [仓库内容 = 应用源代码]
-            Rules[Rules<br>.buildingos/rules/]
-            Skills[Skills<br>.buildingos/skills/]
-            Prompts[Prompts<br>.buildingos/prompts/]
-            Configs[Configs<br>.buildingos/configs/]
+    subgraph C ["治理与配置层 Git-Native Brain"]
+        G[("客户私有 Git 仓库<br>一个租户一个仓库")]
+        subgraph G_content["仓库内容 = 应用源代码"]
+            Rules["Rules<br>.buildingos/rules/"]
+            Skills["Skills<br>.buildingos/skills/"]
+            Prompts["Prompts<br>.buildingos/prompts/"]
+            Configs["Configs<br>.buildingos/configs/"]
         end
     end
 

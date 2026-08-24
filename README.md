@@ -142,29 +142,29 @@ Three layers, separated by responsibility, with **Git at the core** — and exis
 
 ```mermaid
 flowchart TB
-    subgraph A [Surface Layer]
-        UI[Dynamically Generated UI<br>From preset UI Skill & Coding Rules<br>Documents only - zero code]
+    subgraph A ["Surface Layer"]
+        UI["Dynamically Generated UI<br>From preset UI Skill & Coding Rules<br>Documents only - zero code"]
     end
 
-    subgraph B [BuildingOS Runtime<br>Integration & Orchestration]
+    subgraph B ["BuildingOS Runtime<br>Integration & Orchestration"]
         direction LR
-        ORCH[Orchestration & Governance<br>Tenant / Context Assembly / Policies]
-        AD[Harness Adapters<br>DSH Adapter | Codex Adapter | More]
+        ORCH["Orchestration & Governance<br>Tenant / Context Assembly / Policies"]
+        AD["Harness Adapters<br>DSH Adapter | Codex Adapter | More"]
     end
 
-    subgraph E [Existing Harness Engines]
-        DSH[DeepSeek Harness - DSH]
-        CX[Codex Harness]
-        ETC[... more engines]
+    subgraph E ["Existing Harness Engines"]
+        DSH["DeepSeek Harness - DSH"]
+        CX["Codex Harness"]
+        ETC["... more engines"]
     end
 
-    subgraph C [Governance & Config: Git-Native Brain]
-        G[(Customer Private Git Repo<br>One Tenant = One Repo)]
-        subgraph G_content [Repo Content = Application Source Code]
-            Rules[Rules<br>.buildingos/rules/]
-            Skills[Skills<br>.buildingos/skills/]
-            Prompts[Prompts<br>.buildingos/prompts/]
-            Configs[Configs<br>.buildingos/configs/]
+    subgraph C ["Governance & Config: Git-Native Brain"]
+        G[("Customer Private Git Repo<br>One Tenant = One Repo")]
+        subgraph G_content["Repo Content = Application Source Code"]
+            Rules["Rules<br>.buildingos/rules/"]
+            Skills["Skills<br>.buildingos/skills/"]
+            Prompts["Prompts<br>.buildingos/prompts/"]
+            Configs["Configs<br>.buildingos/configs/"]
         end
     end
 
