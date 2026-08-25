@@ -31,6 +31,8 @@ import {
   rememberWorkspace,
   scanForWorkspaces,
   workspaceName,
+  listDirs,
+  fsRoots,
 } from './workspaces.js';
 import { devDown, devStatus, devUp } from './dev.js';
 
@@ -104,12 +106,20 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse, url: 
       return json(res, 200, { recents: listRecents() });
     }
     if (p === '/api/workspaces/select' && req.method === 'POST') {
+      // Accept any directory (the first step is "pick a folder on this
+      // computer"); isWorkspace tells the UI whether to open the tenant or
+      // offer to initialize one here.
       const dir = path.resolve(str(body.path));
-      if (!isWorkspace(dir)) {
-        return json(res, 400, { error: `not a BuildingOS workspace (no .buildingos/): ${dir}` });
-      }
+      if (!existsSync(dir)) return json(res, 400, { error: `no such folder: ${dir}` });
       rememberWorkspace(dir);
-      return json(res, 200, { path: dir, name: workspaceName(dir) });
+      return json(res, 200, { path: dir, name: workspaceName(dir), isWorkspace: isWorkspace(dir) });
+    }
+    if (p === '/api/fs/list' && req.method === 'GET') {
+      const dir = str(url.searchParams.get('path')) || (fsRoots()[0] ?? process.cwd());
+      return json(res, 200, listDirs(dir));
+    }
+    if (p === '/api/fs/roots' && req.method === 'GET') {
+      return json(res, 200, { roots: fsRoots() });
     }
     if (p === '/api/workspaces/scan' && req.method === 'POST') {
       const baseDir = path.resolve(str(body.baseDir) || process.cwd());

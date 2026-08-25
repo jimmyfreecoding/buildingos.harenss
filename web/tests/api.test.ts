@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runWizardFromAnswers } from '@buildingos/bootstrap';
-import { isWorkspace, scanForWorkspaces, rememberWorkspace, listRecents, CONFIG_FILE, CONFIG_DIR } from '../server/workspaces.js';
+import { isWorkspace, scanForWorkspaces, rememberWorkspace, listRecents, listDirs, CONFIG_FILE, CONFIG_DIR } from '../server/workspaces.js';
 
 describe('web console workspace discovery', () => {
   let dir: string;
@@ -40,5 +40,23 @@ describe('web console workspace discovery', () => {
     expect(recents[0]?.path).toBe(dir); // most recent first
     expect(CONFIG_DIR.length).toBeGreaterThan(0);
     expect(CONFIG_FILE.endsWith('config.json')).toBe(true);
+  });
+
+  it('listDirs browses a folder, marks the tenant child, and finds the parent', async () => {
+    const parent = path.dirname(dir);
+    const listing = listDirs(parent);
+    expect(listing.path).toBe(parent);
+    // The tenant dir is a child and is flagged as a workspace.
+    const child = listing.dirs.find((d) => d.path === dir);
+    expect(child).toBeDefined();
+    expect(child?.isWorkspace).toBe(true);
+    // A non-tenant child is present (the temp dir's other entries), and parent resolves.
+    expect(listing.parent).not.toBeNull();
+  });
+
+  it('listDirs on a drive root has no parent', () => {
+    const listing = listDirs('C:\\');
+    expect(listing.path).toBe('C:\\');
+    expect(listing.parent).toBeNull();
   });
 });

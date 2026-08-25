@@ -52,6 +52,10 @@ export function WizardPanel({ workspace }: Props) {
       <h2>首启向导（init）</h2>
       <p className="muted">步骤 0-7：语言 → 引擎 → 模型 → 凭证 → 脚手架 → 校验。token 只写进 .env（D21，绝不进 Git）。</p>
 
+      <label>5. 目标目录（脚手架位置）</label>
+      <input value={dir} onChange={(e) => setDir(e.target.value)} />
+      <p className="hint">这个目录当前还不是租户——执行向导后会在其中生成 <code>.buildingos/</code>、<code>knowledge/</code>、<code>docker-compose.yml</code> 等。</p>
+
       <label>0. 语言</label>
       <select value={language} onChange={(e) => setLanguage(e.target.value as 'zh' | 'en')}>
         <option value="zh">中文</option>
@@ -77,9 +81,6 @@ export function WizardPanel({ workspace }: Props) {
 
       <label>4. Git token（可留空跳过）</label>
       <input type="password" value={gitToken} onChange={(e) => setGitToken(e.target.value)} placeholder="留空 = 跳过" />
-
-      <label>5. 目标目录（脚手架位置）</label>
-      <input value={dir} onChange={(e) => setDir(e.target.value)} />
 
       <div className="actions">
         <button onClick={run} disabled={busy || !modelToken.trim()}>执行向导</button>

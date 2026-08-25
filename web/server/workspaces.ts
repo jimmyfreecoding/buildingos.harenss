@@ -54,6 +54,57 @@ export function workspaceName(dir: string): string {
   return path.basename(dir) || dir;
 }
 
+/** A folder the picker can browse into, tagged with whether it is already a tenant. */
+export interface FsDir {
+  name: string;
+  path: string;
+  isWorkspace: boolean;
+}
+
+/**
+ * List the immediate subdirectories of a dir for the picker's folder browser.
+ * Returns the current dir, its parent, and each child folder (dirs only, no
+ * dotfiles, no node_modules). Empty result when the dir has no browsable
+ * children.
+ */
+export function listDirs(dir: string): { path: string; parent: string | null; dirs: FsDir[]; isWorkspace: boolean } {
+  const resolved = path.resolve(dir);
+  let parent: string | null = path.dirname(resolved);
+  if (parent === resolved) parent = null; // drive root on Windows
+  const dirs: FsDir[] = [];
+  try {
+    for (const entry of readdirSync(resolved, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith('.')) continue;
+      if (entry.name === 'node_modules' || entry.name === '.git') continue;
+      const full = path.join(resolved, entry.name);
+      dirs.push({
+        name: entry.name,
+        path: full,
+        isWorkspace: isWorkspace(full),
+      });
+    }
+  } catch {
+    // unreadable dir → empty list
+  }
+  dirs.sort((a, b) => a.name.localeCompare(b.name));
+  return { path: resolved, parent, dirs, isWorkspace: isWorkspace(resolved) };
+}
+
+/** Root folders to start the browser at (drive roots on Windows, / elsewhere). */
+export function fsRoots(): string[] {
+  const roots: string[] = [];
+  if (process.platform === 'win32') {
+    for (let c = 65; c <= 90; c++) {
+      const drive = `${String.fromCharCode(c)}:\\`;
+      if (existsSync(drive)) roots.push(drive);
+    }
+  } else {
+    roots.push('/');
+  }
+  return roots;
+}
+
 /** Recents, newest first, each checked to still be a workspace. */
 export function listRecents(): RecentEntry[] {
   return loadConfig()

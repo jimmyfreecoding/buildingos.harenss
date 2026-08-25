@@ -6,6 +6,20 @@ export interface RecentEntry {
   name: string;
 }
 
+/** A folder shown in the picker's local-folder browser. */
+export interface FsDir {
+  name: string;
+  path: string;
+  isWorkspace: boolean;
+}
+
+export interface FsList {
+  path: string;
+  parent: string | null;
+  dirs: FsDir[];
+  isWorkspace: boolean;
+}
+
 export interface TreeNode {
   path: string;
   isDir: boolean;

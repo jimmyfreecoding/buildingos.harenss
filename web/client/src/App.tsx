@@ -24,10 +24,12 @@ export function App() {
     }).catch(() => {});
   }, []);
 
-  const select = (dir: string) => {
+  const select = (dir: string, isWorkspace: boolean) => {
     setWorkspace(dir);
     setWorkspaceName(dir.split(/[\\/]/).pop() ?? dir);
-    setTab('docs');
+    // A tenant opens on the docs; any other folder starts at the wizard so the
+    // user can initialize a workspace right here.
+    setTab(isWorkspace ? 'docs' : 'wizard');
   };
 
   if (!workspace) {
@@ -53,7 +55,7 @@ export function App() {
       </aside>
       <main className="content">
         {tab === 'docs' && <DocsPanel workspace={workspace} />}
-        {tab === 'wizard' && <WizardPanel workspace={workspace} />}
+        {tab === 'wizard' && <WizardPanel key={workspace} workspace={workspace} />}
         {tab === 'pipeline' && <PipelinePanel workspace={workspace} />}
         {tab === 'dev' && <DevPanel workspace={workspace} />}
       </main>

@@ -5,6 +5,7 @@ import type {
   DevActionResult,
   DevStatus,
   Diagnostic,
+  FsList,
   RecentEntry,
   TreeNode,
   WizardRequest,
@@ -27,9 +28,12 @@ export const api = {
 
   recents: () => req<{ recents: RecentEntry[] }>('GET', '/api/workspaces/recents'),
   selectWorkspace: (path: string) =>
-    req<{ path: string; name: string }>('POST', '/api/workspaces/select', { path }),
+    req<{ path: string; name: string; isWorkspace: boolean }>('POST', '/api/workspaces/select', { path }),
   scanWorkspaces: (baseDir: string, depth = 1) =>
     req<{ baseDir: string; workspaces: string[] }>('POST', '/api/workspaces/scan', { baseDir, depth }),
+
+  fsRoots: () => req<{ roots: string[] }>('GET', '/api/fs/roots'),
+  fsList: (path?: string) => req<FsList>('GET', `/api/fs/list${path ? `?path=${encodeURIComponent(path)}` : ''}`),
 
   tree: (path: string) => req<{ workspace: string; tree: TreeNode[] }>('GET', `/api/workspace/tree?path=${encodeURIComponent(path)}`),
   readFile: (path: string, file: string) =>

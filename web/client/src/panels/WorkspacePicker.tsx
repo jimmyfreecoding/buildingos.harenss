@@ -1,62 +1,116 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import type { RecentEntry } from '../types';
+import type { FsList, RecentEntry } from '../types';
 
 interface Props {
-  onSelect: (dir: string) => void;
+  onSelect: (dir: string, isWorkspace: boolean) => void;
 }
 
+/**
+ * The first step: browse this computer's folders and pick one.
+ *  - a folder that's already a tenant (.buildingos/) → open it
+ *  - any other folder → the app offers to initialize one here
+ * (No manual-path requirement, no "must be .buildingos first".)
+ */
 export function WorkspacePicker({ onSelect }: Props) {
   const [recents, setRecents] = useState<RecentEntry[]>([]);
-  const [manual, setManual] = useState('');
-  const [scanDir, setScanDir] = useState('');
-  const [scanned, setScanned] = useState<string[]>([]);
+  const [current, setCurrent] = useState<FsList | null>(null);
+  const [roots, setRoots] = useState<string[]>([]);
+  const [address, setAddress] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const loadDir = async (dir?: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      const list = await api.fsList(dir);
+      setCurrent(list);
+      setAddress(list.path);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     api.recents().then(({ recents: r }) => setRecents(r)).catch(() => {});
+    api.fsRoots().then(({ roots: r }) => {
+      setRoots(r);
+      // Start browsing at the first drive root (e.g. C:\ on Windows).
+      loadDir(r[0]);
+    }).catch(() => {});
   }, []);
 
   const pick = async (dir: string) => {
     setLoading(true);
     setError('');
     try {
-      await api.selectWorkspace(dir);
-      onSelect(dir);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const r = await api.selectWorkspace(dir);
+      onSelect(r.path, r.isWorkspace);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
   };
 
-  const doScan = async () => {
-    if (!scanDir.trim()) return;
-    setLoading(true);
-    setError('');
-    try {
-      const r = await api.scanWorkspaces(scanDir.trim());
-      setScanned(r.workspaces);
-      if (r.workspaces.length === 0) setError(`在 ${scanDir} 下没有发现工作区（需要 .buildingos/ 标记）`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const goTo = (dir: string) => loadDir(dir);
 
   return (
     <div className="picker">
-      <div className="picker-card">
+      <div className="picker-card picker-wide">
         <h1>BuildingOS 控制台</h1>
-        <p className="muted">选择一个工作区（带 <code>.buildingos/</code> 标记的目录）。工具不是项目——工作区才是你的租户。</p>
+        <p className="muted">第一步：选择这台电脑上的一个文件夹作为工作区。若它已是租户（含 <code>.buildingos/</code>）直接打开；否则可在这里初始化一个。</p>
 
         <section>
-          <h2>最近使用</h2>
-          {recents.length === 0 ? (
-            <p className="muted">还没有最近工作区。</p>
-          ) : (
+          <h2>浏览文件夹</h2>
+
+          <div className="row fs-row">
+            <span className="fs-label">位置</span>
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && address.trim() && goTo(address.trim())}
+              spellCheck={false}
+            />
+            <button onClick={() => address.trim() && goTo(address.trim())}>前往</button>
+            {current?.parent && <button className="secondary" onClick={() => goTo(current.parent as string)}>↑ 上级</button>}
+          </div>
+
+          <div className="fs-roots">
+            {roots.map((r) => <button key={r} className="secondary" onClick={() => goTo(r)}>{r}</button>)}
+          </div>
+
+          {current && (
+            <div className="fs-list">
+              <div className="fs-current">
+                <code>{current.path}</code>
+                {current.isWorkspace && <span className="badge">租户</span>}
+                <button className="primary" onClick={() => pick(current.path)} disabled={loading}>选择此文件夹</button>
+              </div>
+              {current.dirs.length === 0 ? (
+                <p className="muted">这个文件夹下没有子文件夹可浏览。</p>
+              ) : (
+                <ul className="fs-entries">
+                  {current.dirs.map((d) => (
+                    <li key={d.path}>
+                      <button className={d.isWorkspace ? 'entry ws' : 'entry'} onClick={() => goTo(d.path)}>
+                        <span className="entry-name">{d.name}</span>
+                        {d.isWorkspace && <span className="badge">租户</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </section>
+
+        {recents.length > 0 && (
+          <section>
+            <h2>最近使用</h2>
             <ul className="recent-list">
               {recents.map((r) => (
                 <li key={r.path}>
@@ -67,49 +121,11 @@ export function WorkspacePicker({ onSelect }: Props) {
                 </li>
               ))}
             </ul>
-          )}
-        </section>
-
-        <section>
-          <h2>扫描目录</h2>
-          <div className="row">
-            <input
-              value={scanDir}
-              onChange={(e) => setScanDir(e.target.value)}
-              placeholder="例如 C:\project\tenants"
-              onKeyDown={(e) => e.key === 'Enter' && doScan()}
-            />
-            <button onClick={doScan} disabled={loading || !scanDir.trim()}>扫描</button>
-          </div>
-          {scanned.length > 0 && (
-            <ul className="recent-list">
-              {scanned.map((s) => (
-                <li key={s}>
-                  <button className="recent-btn" disabled={loading} onClick={() => pick(s)}>
-                    <span className="recent-name">{s.split(/[\\/]/).pop()}</span>
-                    <span className="recent-path">{s}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section>
-          <h2>手动输入路径</h2>
-          <div className="row">
-            <input
-              value={manual}
-              onChange={(e) => setManual(e.target.value)}
-              placeholder="C:\path\to\tenant"
-              onKeyDown={(e) => e.key === 'Enter' && manual.trim() && pick(manual.trim())}
-            />
-            <button onClick={() => manual.trim() && pick(manual.trim())} disabled={loading || !manual.trim()}>打开</button>
-          </div>
-        </section>
+          </section>
+        )}
 
         {error && <div className="error">{error}</div>}
-        {loading && <div className="muted">处理中…</div>}
+        {loading && <div className="muted">加载中…</div>}
       </div>
     </div>
   );
