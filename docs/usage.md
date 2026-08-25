@@ -27,7 +27,12 @@ cd my-tenant
 (If you prefer not to link globally: `pnpm buildingos <cmd>` from the tool repo also works.)
 
 ```bash
-# Scaffold a tenant repository — interactive first-boot wizard:
+# The web console is the interaction surface (DSH-GUI style):
+# workspace picker → document tree/editor → wizard → pipeline panels → dev env.
+buildingos web
+# → http://127.0.0.1:4399
+
+# Scaffold a tenant repository — interactive first-boot wizard (or in the console's 向导 panel):
 #   0. language (中文 / English)   ← the very first question
 #   1. engine (dsh / codex)        → runtime.yaml engine
 #   2. model (starter catalog)     → runtime.yaml model
@@ -38,22 +43,15 @@ cd my-tenant
 #   7. summary + next steps
 buildingos init my-tenant
 
-# Validate & lint it (normalizer pipeline stages 1–2)
-buildingos validate my-tenant
-
-# Render the engine view (what DSH or Codex actually consumes)
-buildingos compile --engine dsh my-tenant
-buildingos compile --engine codex my-tenant
-
-# Conformance: compile output vs. the golden engine-views baseline
-buildingos conformance my-tenant
-
 # Start the dev environment (docker compose up in the tenant; M1.5 ②)
 buildingos dev my-tenant
 # → buildingos-runtime container (the `buildingos` CLI inside, /workspace bound)
 # → postgres on :5432 (state store; PG_PASSWORD lives in .env, never Git, D21)
 # work inside the container: docker compose exec buildingos-runtime buildingos validate
 ```
+
+The validate / compile / conformance pipeline runs in the web console's 校验/编译/一致性 panel
+(they were CLI commands in M1; the console API exposes them now).
 
 ### What a tenant looks like after `init`
 
@@ -84,28 +82,31 @@ Workspace resolution order:
 4. error with guidance (`buildingos init <dir>` / `--workspace`)
 
 ```bash
-buildingos validate --workspace my-tenant
-BUILDINGOS_WORKSPACE=my-tenant buildingos compile --engine dsh
-cd my-tenant && buildingos validate          # upward search finds the marker
+buildingos web --workspace my-tenant      # open the console at a specific workspace
+BUILDINGOS_WORKSPACE=my-tenant buildingos dev
+cd my-tenant && buildingos dev            # upward search finds the marker
 ```
 
 ## 2. CLI reference
 
 | Command | What it does |
 |---|---|
+| `buildingos web [--port N]` | **The interaction surface** (DSH-GUI-style console): workspace picker → document tree/editor → wizard → validate/compile/conformance panels → dev environment control |
 | `buildingos init <dir>` | Scaffold a tenant repository (starter rules/skills/prompts/configs/knowledge + .gitignore + docker-compose.yml + .env) |
 | `buildingos dev [root]` | Start the tenant's dev environment — `docker compose up` in the tenant workspace (buildingos-runtime CLI container + postgres; M1.5 ②) |
-| `buildingos validate [root]` | Load + lint a tenant: schema checks, `ORDER_DUPLICATE` (D20), `DEP_UNRESOLVED` (D3), permissions no-hand-write (D14); exit non-zero on errors |
-| `buildingos compile --engine dsh\|codex [root] [--out <dir>]` | Render the engine view from TenantDocs; writes files into `engine-views/<engine>` by default |
-| `buildingos conformance [root]` | G1 compile-parity against the golden baseline (needs `engine-views/` first); G2–G4 engine-gated, skipped |
+
+The pipeline operations (validate / compile / conformance) are console-API driven — run them in
+the web console's 校验/编译/一致性 panel (they were CLI commands in M1; removed with the web-first
+switch).
 
 ## 3. The development loop (today)
 
 ```
-edit .buildingos/*.md     # change know-how — rules/skills/prompts
-→ buildingos validate .   # CI-grade lint, fail on errors
-→ buildingos compile --engine dsh .   # see what the engine will consume
-→ git commit + PR         # governance: review, merge, version, rollback
+buildingos web           # open the console → pick the workspace
+edit .buildingos/*.md    # in the console's document panel (or your editor)
+→ 校验 panel             # CI-grade lint, fail on errors
+→ 编译 panel             # see what the engine will consume (dsh / codex)
+→ git commit + PR        # governance: review, merge, version, rollback
 ```
 
 Everything the AI application is — behavior, capabilities, persona, permissions — is Markdown/YAML in the tenant repository. There is no application code.
@@ -135,7 +136,7 @@ buildingos serve --prod    # production companion (M5.5): same runtime, ops post
 
 | Stage | Milestone | Status |
 |---|---|---|
-| `normalizer` / adapters / conformance / minimal CLI | M1 | ✅ implemented, 60 tests |
+| `normalizer` / adapters / conformance / minimal CLI | M1 | ✅ implemented, 63 tests |
 | First-boot wizard (`init` steps 0–5: language/engine/model/credentials/git/scaffold) | M1.5 | ✅ implemented — [runtime-bootstrap.md](runtime-bootstrap.md) §2 |
 | Dev environment (`buildingos dev` = docker compose up: buildingos-runtime + postgres) | M1.5 ② | ✅ implemented — [dev-environment.md](dev-environment.md) |
 | Runtime CLI entry (step 7: `buildingos serve --prod`) | M5.5 | 📋 pending |
@@ -148,7 +149,7 @@ Until the runtime lands, everything above the dotted line — document model, sc
 
 ## 5. Testing the current state
 
-One command verifies everything (60 unit/acceptance tests + the full CLI E2E loop):
+One command verifies everything (63 unit/acceptance tests + the full E2E loop):
 
 ```bash
 pnpm verify        # typecheck → build → test → e2e demo
@@ -164,7 +165,8 @@ pnpm --filter @buildingos/cli demo  # init(wizard) → validate → compile dsh/
 | `@buildingos/adapter-codex` | 6 | compile() renders the Codex view; golden-output parity (SKILL.md parser-consumed fields, openai.yaml semantic match, AGENTS.md order, config.toml D13) |
 | `@buildingos/bootstrap` | 12 | `initTenant` (scaffold + tool-repo guard + .gitignore + .env/.env.example D21), wizard (language first, engine/model/credentials/git, ZH/EN l10n), dev env artifacts (`renderDevCompose`/`renderDevEnv`/`randomPgPassword`/`findToolDir` — M1.5 ②) |
 | `@buildingos/conformance` | 3 | G1 compile-parity against golden engine-views (both engines), tenant-error surfacing, G2–G4 engine-gated skeletons |
-| `@buildingos/cli` | 18 | first-boot wizard (language first, engine/model/credentials/git, `.env` D21, `.env.example`), workspace resolution (flag/env/upward-search/error), validate/compile/conformance commands, `dev` (compose detection + docker spawn, M1.5 ②) |
+| `@buildingos/web` | 3 | workspace discovery (`.buildingos/` marker, scan, recents persistence) — the console's picker foundation |
+| `@buildingos/cli` | 15 | first-boot wizard (language first, engine/model/credentials/git, `.env` D21, `.env.example`), workspace resolution (flag/env/upward-search/error), `web` (console entry), `dev` (compose detection + docker spawn, M1.5 ②) |
 
 **How to add a test**: put a `*.test.ts` in the package's `tests/` (fixtures: `examples/` for acceptance, crafted temp dirs for negative cases), then `pnpm --filter <pkg> test`. The golden engine-views are the byte/semantic baseline for compile (conformance G1).
 

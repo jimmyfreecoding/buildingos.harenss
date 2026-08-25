@@ -1,34 +1,27 @@
 /**
  * @buildingos/cli — command dispatch.
  *
- *   buildingos init <dir>                 scaffold a tenant repository
- *   buildingos validate [root]            load + lint a tenant (normalizer diagnostics)
- *   buildingos compile --engine <dsh|codex> [root] [--out <dir>]   render the engine view
- *   buildingos conformance [root]         G1 compile-parity report (G2–G4 engine-gated)
+ *   buildingos init <dir>      first-boot wizard (language → engine → model → credentials → git)
+ *   buildingos web             start the web console (the interaction surface)
+ *   buildingos dev [root]      start the tenant dev environment (docker compose up)
  *
- * The full first-boot wizard (engine/model/credentials/git, docs/runtime-bootstrap.md §2)
- * lands with the runtime CLI (M1.5); these four commands exercise everything that runs today.
+ * The interaction surface is the web console (`buildingos web`); the CLI keeps
+ * the bootstrap commands (init/dev) and the web entry. Pipeline operations
+ * (validate/compile/conformance) live in the web console's API.
  */
-import { mkdir, writeFile, stat } from 'node:fs/promises';
-import { readFileSync, realpathSync, existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { codexAdapter } from '@buildingos/adapter-codex';
-import { dshAdapter } from '@buildingos/adapter-dsh';
-import { runConformance } from '@buildingos/conformance';
 import { createConsoleIO, runWizard, findToolDir } from '@buildingos/bootstrap';
-import { loadTenantDocs } from '@buildingos/normalizer';
 import { resolveWorkspace } from './workspace.js';
 
 function usage(): void {
   console.log(`BuildingOS CLI — the tool; a tenant workspace (a dir with .buildingos/) is the user's project.
-  buildingos init [dir]                              first-boot wizard (language → engine → model → credentials → git)
-                                                     [dir] optional: default = current directory (git-init style)
-  buildingos dev [root]                              start the tenant dev environment (docker compose up)
-  buildingos validate [root]                         load + lint a tenant (normalizer)
-  buildingos compile --engine <dsh|codex> [root]     render the engine view (--out <dir>)
-  buildingos conformance [root]                      conformance G1 report (needs a golden baseline)
+  buildingos init [dir]       first-boot wizard (language → engine → model → credentials → git)
+                              [dir] optional: default = current directory (git-init style)
+  buildingos web [--port N]   start the web console — the interaction surface (workspace picker, docs, wizard, pipeline, dev env)
+  buildingos dev [root]       start the tenant dev environment (docker compose up)
   Workspace resolution: --workspace <dir> | positional root | BUILDINGOS_WORKSPACE | upward .buildingos/ search
 `);
 }
@@ -88,81 +81,46 @@ function resolveRoot(flag: string | undefined, positional: string | undefined): 
   return resolveWorkspace({ flag: flag ?? positional, env: process.env.BUILDINGOS_WORKSPACE });
 }
 
-/** Sync asset resolver (compile() is synchronous); reads reference/script files from the tenant. */
-function assetsFor(buildingosDir: string) {
-  return (skill: string, rel: string) => {
-    try {
-      return readFileSync(path.join(buildingosDir, 'skills', skill, rel), 'utf8');
-    } catch {
-      return undefined;
-    }
-  };
-}
-
-async function cmdValidate(root: string): Promise<number> {
-  const { diagnostics, ok } = await loadTenantDocs({ repoRoot: root });
-  for (const d of diagnostics) console.log(`[${d.severity.toUpperCase()}] ${d.code} ${d.file ? `(${d.file})` : ''} ${d.message}`);
-  console.log(ok ? `validate: OK (${diagnostics.filter((d) => d.severity === 'warning' || d.severity === 'info').length} warnings/info)` : `validate: FAILED (${diagnostics.filter((d) => d.severity === 'error').length} errors)`);
-  return ok ? 0 : 1;
-}
-
-async function cmdCompile(root: string, engine: string | undefined, out: string | undefined): Promise<number> {
-  if (engine !== 'dsh' && engine !== 'codex') {
-    console.error('compile: --engine must be dsh|codex');
-    return 2;
-  }
-  const buildingosDir = path.join(root, '.buildingos');
-  const { docs, ok } = await loadTenantDocs({ repoRoot: root, buildingosDir });
-  if (!ok) {
-    console.error('compile: tenant failed validation; run `buildingos validate` first');
-    return 1;
-  }
-  const adapter = engine === 'dsh' ? dshAdapter : codexAdapter;
-  const view = adapter.compile(docs, { assets: await assetsFor(buildingosDir) });
-  const outDir = out ?? path.join(root, 'engine-views', engine);
-  for (const f of view.files) {
-    const full = path.join(outDir, ...f.path.split('/'));
-    await mkdir(path.dirname(full), { recursive: true });
-    await writeFile(full, f.content, 'utf8');
-  }
-  console.log(`compile: ${view.files.length} files → ${outDir} (engine=${engine})`);
-  return 0;
-}
-
-async function cmdConformance(root: string, argv: string[]): Promise<number> {
-  const repoRoot = path.resolve(root);
-  const goldenDir = path.join(repoRoot, 'engine-views');
-  let baseline = false;
-  try {
-    baseline = (await stat(goldenDir)).isDirectory();
-  } catch {
-    baseline = false;
-  }
-  if (!baseline) {
-    console.log('conformance: no golden baseline (engine-views/ missing) — run `buildingos compile --engine dsh` and `buildingos compile --engine codex` first');
-    return 1;
-  }
-  const results = await runConformance({
-    repoRoot,
-    buildingosDir: path.join(repoRoot, '.buildingos'),
-    knowledgeDir: path.join(repoRoot, 'knowledge'),
-    goldenDir,
-    assets: await assetsFor(path.join(repoRoot, '.buildingos')),
-  });
-  let failed = 0;
-  for (const r of results) {
-    const isSkipped = 'skipped' in r && r.skipped;
-    const status = isSkipped ? 'SKIP' : r.passed ? 'PASS' : 'FAIL';
-    if (!isSkipped && !r.passed) failed += 1;
-    console.log(`[${status}] ${r.task} (${'engine' in r ? r.engine : '—'})`);
-    if ('details' in r) for (const d of r.details) console.log(`      ${d}`);
-  }
-  return failed === 0 ? 0 : 1;
-}
-
 /** init target: with [dir] → ./<dir>; without → current directory (git-init style). */
 export function initTarget(argv: string[]): string {
   return argv[0] ? path.resolve(argv[0]) : process.cwd();
+}
+
+/**
+ * Locate the built web console server inside the tool repo. Returns the path
+ * to web/dist/server/index.js when built, else undefined.
+ */
+export function webServerPath(): string | undefined {
+  const env = process.env.BUILDINGOS_TOOL_DIR;
+  const tool = env
+    ? path.resolve(env)
+    : findToolDir(path.dirname(moduleSelfPath())) ?? findToolDir(process.cwd());
+  if (!tool) return undefined;
+  const server = path.join(tool, 'web', 'dist', 'server', 'index.js');
+  return existsSync(server) ? server : undefined;
+}
+
+/** `buildingos web` — start the web console (the interaction surface). */
+export async function cmdWeb(rest: string[], spawner: typeof spawn = spawn): Promise<number> {
+  const port = Number(arg(rest, '--port') ?? process.env.PORT ?? 4399);
+  const host = arg(rest, '--host') ?? '127.0.0.1';
+  const server = webServerPath();
+  if (!server) {
+    console.error('web: built console not found — build it first with `pnpm --filter @buildingos/web build` (run from the tool repo), or set BUILDINGOS_TOOL_DIR to the tool repo.');
+    return 1;
+  }
+  const child = spawner(process.execPath, [server, String(port), host], {
+    stdio: 'inherit',
+    env: { ...process.env },
+  });
+  console.log(`buildingos web: http://${host}:${port}  (Ctrl+C to stop)`);
+  return await new Promise<number>((resolve) => {
+    child.on('exit', (code) => resolve(code ?? 0));
+    child.on('error', (err) => {
+      console.error(`web: failed to start — ${err.message}`);
+      resolve(1);
+    });
+  });
 }
 
 export async function main(argv: string[]): Promise<number> {
@@ -176,6 +134,8 @@ export async function main(argv: string[]): Promise<number> {
       const result = await runWizard(target, createConsoleIO(), { toolDir });
       return result.ok ? 0 : 1;
     }
+    case 'web':
+      return cmdWeb(rest);
     case 'dev': {
       // Positional root = first arg that is not a flag (dev passes rest through to docker compose).
       const wsFlag = arg(rest, '--workspace') ?? arg(rest, '-w');
@@ -186,41 +146,6 @@ export async function main(argv: string[]): Promise<number> {
         return 1;
       }
       return cmdDev(resolved.root, rest);
-    }
-    case 'web': {
-      // Removed (product decision): the interaction surface is the CLI; no web console.
-      console.error('web console removed — use the CLI commands (init/validate/compile/conformance)');
-      return 2;
-    }
-    case 'validate': {
-      const resolved = resolveRoot(arg(rest, '--workspace') ?? arg(rest, '-w'), rest[0]);
-      if ('error' in resolved) {
-        console.error(resolved.error);
-        return 1;
-      }
-      return cmdValidate(resolved.root);
-    }
-    case 'compile': {
-      const engine = arg(rest, '--engine');
-      const out = arg(rest, '--out');
-      const wsFlag = arg(rest, '--workspace') ?? arg(rest, '-w');
-      // Positional root = the first arg that is neither a flag name nor a flag value.
-      const flagTokens = new Set(['--engine', engine, '--out', out, '--workspace', wsFlag, '-w', wsFlag]);
-      const positional = rest.find((a) => !flagTokens.has(a) && !a.startsWith('-'));
-      const resolved = resolveRoot(wsFlag, positional);
-      if ('error' in resolved) {
-        console.error(resolved.error);
-        return 1;
-      }
-      return cmdCompile(resolved.root, engine, out);
-    }
-    case 'conformance': {
-      const resolved = resolveRoot(arg(rest, '--workspace') ?? arg(rest, '-w'), rest[0]);
-      if ('error' in resolved) {
-        console.error(resolved.error);
-        return 1;
-      }
-      return cmdConformance(resolved.root, rest);
     }
     default:
       usage();

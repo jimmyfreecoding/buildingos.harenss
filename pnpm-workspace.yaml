@@ -4,5 +4,6 @@ packages:
   - bootstrap
   - conformance
   - cli
+  - web
 allowBuilds:
   esbuild: true

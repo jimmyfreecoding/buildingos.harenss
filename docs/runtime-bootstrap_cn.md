@@ -1,7 +1,7 @@
 # BuildingOS Runtime 引导与配置（M1 设计稿 v0.1）
 
 > 定位：runtime 首启引导（bootstrap）与配置分层设计——写代码前的最后一个设计块，衔接 normalizer（加载租户文档）与 adapter（接引擎）。
-> 决策：b1 配置三分（D21）/ b2 秘密 M1 env 注入 + M2 secret store / b3 M1 CLI 向导（admin web 归 M3）/ b4 dev 与 prod 同一 runtime 双姿态。
+> 决策：b1 配置三分（D21）/ b2 秘密 M1 env 注入 + M2 secret store / b3 M1 Web 控制台即交互面（CLI 保留 init/dev）/ b4 dev 与 prod 同一 runtime 双姿态。
 > 关联：[configs.schema](../schemas/configs.schema.md)、[normalizer-design.md](normalizer-design.md)、[tenancy-model.md](tenancy-model.md)、[contract-philosophy_cn.md](contract-philosophy_cn.md) D21。
 
 ## 1. 配置三分（D21，铁律：钥匙不进仓库）
@@ -82,7 +82,7 @@ buildingos init（本设计）
 |---|---|---|
 | b1 | 配置分层 | **配置三分（D21）**：引导 / 文档（Git）/ 秘密（env，不进 Git）；钥匙不进仓库是安全底线 |
 | b2 | 秘密存储 | **M1 env 注入 + M2 secret store**（env 通道不变，只换来源） |
-| b3 | 引导交互形态 | **M1 CLI 向导**；admin web 引导归 M3 内置前端 |
+| b3 | 引导交互形态 | **M1 Web 控制台（产品决定，2026-11）**：`buildingos web` 即交互面——先选工作区，浏览器里的向导 / 文档 / 流水线 / 开发环境面板；CLI 保留引导命令（`init`、`dev`）与控制台入口 |
 | b4 | dev/prod 关系 | **同一 runtime 双姿态**（dev runtime / prod companion），共用文档与契约 |
 
 ## 8. 待定项

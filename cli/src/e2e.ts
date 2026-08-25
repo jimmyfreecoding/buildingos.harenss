@@ -1,14 +1,29 @@
 /**
- * E2E demo — the full CLI loop on a throwaway workspace:
+ * E2E demo — the full tenant loop on a throwaway workspace:
  *   init (wizard, scripted answers) → validate → compile dsh → compile codex → conformance.
+ * The pipeline steps use the libraries directly (the CLI no longer ships
+ * validate/compile/conformance — they live in the web console's API).
  * Run via: pnpm --filter @buildingos/cli demo   (or `pnpm verify` at the repo root)
  */
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runWizard } from '@buildingos/bootstrap';
 import type { WizardIO } from '@buildingos/bootstrap';
-import { main } from './cli.js';
+import { loadTenantDocs } from '@buildingos/normalizer';
+import { dshAdapter } from '@buildingos/adapter-dsh';
+import { codexAdapter } from '@buildingos/adapter-codex';
+import { runConformance } from '@buildingos/conformance';
+
+function assetsFor(buildingosDir: string) {
+  return (skill: string, rel: string) => {
+    try {
+      return readFileSync(path.join(buildingosDir, 'skills', skill, rel), 'utf8');
+    } catch {
+      return undefined;
+    }
+  };
+}
 
 async function e2e(): Promise<number> {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'bos-e2e-'));
@@ -29,18 +44,43 @@ async function e2e(): Promise<number> {
 
   try {
     const wizard = await runWizard(dir, io);
-    const steps: Array<[string, number]> = [
-      ['init (first-boot wizard, language first)', wizard.ok ? 0 : 1],
-      ['dev env artifacts (docker-compose.yml + .env + PG_PASSWORD)', devEnvArtifactsOk(dir) ? 0 : 1],
-      ['validate', await main(['validate', dir])],
-      ['compile --engine dsh', await main(['compile', '--engine', 'dsh', dir])],
-      ['compile --engine codex', await main(['compile', '--engine', 'codex', dir])],
-      ['conformance (G1 both engines)', await main(['conformance', dir])],
+
+    const buildingosDir = path.join(dir, '.buildingos');
+    const assets = assetsFor(buildingosDir);
+
+    const validate = await loadTenantDocs({ repoRoot: dir });
+    const compileDsh = dshAdapter.compile(validate.docs, { assets });
+    const compileCodex = codexAdapter.compile(validate.docs, { assets });
+    for (const f of compileDsh.files) {
+      const full = path.join(dir, 'engine-views', 'dsh', ...f.path.split('/'));
+      mkdirSync(path.dirname(full), { recursive: true });
+      writeFileSync(full, f.content, 'utf8');
+    }
+    for (const f of compileCodex.files) {
+      const full = path.join(dir, 'engine-views', 'codex', ...f.path.split('/'));
+      mkdirSync(path.dirname(full), { recursive: true });
+      writeFileSync(full, f.content, 'utf8');
+    }
+    const conformance = await runConformance({
+      repoRoot: dir,
+      buildingosDir,
+      knowledgeDir: path.join(dir, 'knowledge'),
+      goldenDir: path.join(dir, 'engine-views'),
+      assets,
+    });
+
+    const steps: Array<[string, boolean]> = [
+      ['init (first-boot wizard, language first)', wizard.ok],
+      ['dev env artifacts (docker-compose.yml + .env + PG_PASSWORD)', devEnvArtifactsOk(dir)],
+      ['validate (normalizer)', validate.ok],
+      ['compile --engine dsh', compileDsh.files.length > 0],
+      ['compile --engine codex', compileCodex.files.length > 0],
+      ['conformance (G1 both engines)', conformance.length > 0 && conformance.every((r) => 'skipped' in r && r.skipped ? true : r.passed)],
     ];
     let failed = 0;
-    for (const [name, code] of steps) {
-      console.log(`${code === 0 ? '[PASS]' : '[FAIL]'} ${name}`);
-      if (code !== 0) failed += 1;
+    for (const [name, ok] of steps) {
+      console.log(`${ok ? '[PASS]' : '[FAIL]'} ${name}`);
+      if (!ok) failed += 1;
     }
     console.log(failed === 0 ? 'e2e: OK' : `e2e: FAILED (${failed})`);
     return failed === 0 ? 0 : 1;

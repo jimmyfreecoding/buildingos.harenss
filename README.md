@@ -318,28 +318,34 @@ Full guide: [docs/usage.md](docs/usage.md) · 中文：[docs/usage_cn.md](docs/u
 
 ```bash
 git clone <repo> && cd buildingos.harenss
-pnpm install          # workspace: normalizer / adapters / bootstrap / conformance / cli
+pnpm install          # workspace: normalizer / adapters / bootstrap / conformance / web / cli
 pnpm build            # required once — the bin points at dist/cli.bundle.cjs
-pnpm test             # 60 tests
+pnpm test             # 63 tests
 
 # Install the tool globally (once), then use it anywhere:
 pnpm setup                                  # one-time: add pnpm's global bin to PATH
 cd cli && pnpm pack && cd ..                # one-time: package the self-contained bundle
 pnpm install -g ./cli/buildingos-cli-0.1.0.tgz
 
-buildingos init my-tenant        # scaffold a tenant repository (documents as code)
-buildingos validate my-tenant    # load + lint (schema checks, D20/D3/D14 rules)
-buildingos compile --engine dsh my-tenant    # render the engine view
-buildingos conformance my-tenant            # compile-parity vs golden baseline
+buildingos web               # the interaction surface (DSH-GUI-style console): workspace picker →
+                             #   documents → wizard → pipeline panels → dev environment control
+buildingos init my-tenant    # scaffold a tenant repository (documents as code; or use the console)
+buildingos dev my-tenant     # docker compose up in the tenant (CLI container + postgres)
 ```
 
-The first-boot wizard (`buildingos init` — language, engine/model/credentials/git) and the tenant dev environment (`buildingos dev` — docker compose up: buildingos-runtime CLI container + postgres, M1.5 ②) are implemented. Git webhooks (M2), dynamic UI (M3), the project wizard (M5) and the production companion (M5.5) are designed and pending implementation — see [Roadmap](#project-status--roadmap) and [docs/runtime-bootstrap.md](docs/runtime-bootstrap.md).
+The web console (`buildingos web`) is the interaction surface — pick a workspace, then edit
+documents, run the wizard, validate/compile/conformance, and control the dev environment, all in
+the browser. The first-boot wizard (`buildingos init`) and the tenant dev environment
+(`buildingos dev` — docker compose up: buildingos-runtime CLI container + postgres, M1.5 ②) are
+implemented. Git webhooks (M2), dynamic UI (M3), the project wizard (M5) and the production
+companion (M5.5) are designed and pending implementation — see [Roadmap](#project-status--roadmap)
+and [docs/runtime-bootstrap.md](docs/runtime-bootstrap.md).
 
 ---
 
 ## Project Status & Roadmap
 
-**Current status: M1 in progress.** The M0 design baseline (contracts, schemas, examples) is committed; the M1 pipeline (normalizer → adapters → conformance → CLI) is implemented and tested.
+**Current status: M1 in progress.** The M0 design baseline (contracts, schemas, examples) is committed; the M1 pipeline (normalizer → adapters → conformance → CLI) is implemented and tested; the web console (workspace picker + document/editor + wizard + pipeline panels + dev control) is the interaction surface.
 
 | Milestone | Scope | Status |
 |---|---|---|

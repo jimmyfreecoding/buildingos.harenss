@@ -1,0 +1,41 @@
+{
+  "name": "@buildingos/web",
+  "version": "0.1.0",
+  "description": "BuildingOS web console — the interaction surface (DSH-GUI-style): workspace picker, document tree/editor, wizard, validate/compile/conformance panels, dev environment control. React + Vite SPA served by a Node API server.",
+  "type": "module",
+  "main": "dist/server/index.js",
+  "types": "dist/server/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.server.json && vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "dev:client": "vite",
+    "dev:server": "tsx watch server/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.client.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@buildingos/adapter-codex": "workspace:*",
+    "@buildingos/adapter-dsh": "workspace:*",
+    "@buildingos/bootstrap": "workspace:*",
+    "@buildingos/conformance": "workspace:*",
+    "@buildingos/normalizer": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

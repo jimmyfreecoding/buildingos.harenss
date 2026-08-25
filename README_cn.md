@@ -364,26 +364,32 @@ runtime:
 
 ```bash
 git clone <仓库> && cd buildingos.harenss
-pnpm install          # 工作区：normalizer / adapters / bootstrap / conformance / cli
+pnpm install          # 工作区：normalizer / adapters / bootstrap / conformance / web / cli
 pnpm build            # 必须一次——bin 指向 dist/cli.bundle.cjs
-pnpm test             # 60 个测试
+pnpm test             # 63 个测试
 
 # 全局安装工具（一次），之后随处可用：
 pnpm setup                                  # 一次性：把 pnpm 全局 bin 加入 PATH
 cd cli && pnpm pack && cd ..                # 一次性：打包自包含 bundle
 pnpm install -g ./cli/buildingos-cli-0.1.0.tgz
 
-buildingos init my-tenant        # 脚手架一个租户仓库（文档即代码）
-buildingos validate my-tenant    # 加载 + lint（schema 校验、D20/D3/D14 规则）
-buildingos compile --engine dsh my-tenant    # 渲染引擎视图
-buildingos conformance my-tenant            # 编译产物 vs golden 基线
+buildingos web               # 交互面（DSH-GUI 风格控制台）：工作区选择器 →
+                             #   文档 → 向导 → 流水线面板 → 开发环境控制
+buildingos init my-tenant    # 脚手架一个租户仓库（文档即代码；也可用控制台）
+buildingos dev my-tenant     # 租户内 docker compose up（CLI 容器 + postgres）
 ```
+
+Web 控制台（`buildingos web`）是交互面——先选工作区，然后在浏览器里改文档、跑向导、
+validate/compile/conformance、启停开发环境。首启向导（`buildingos init`）与租户开发环境
+（`buildingos dev`——docker compose up：buildingos-runtime CLI 容器 + postgres，M1.5 ②）已实现。
+Git webhook（M2）、动态 UI（M3）、项目向导（M5）与生产伴生（M5.5）已设计、待实现——见
+[路线图](#项目状态与路线图) 与 [docs/runtime-bootstrap.md](docs/runtime-bootstrap.md)。
 
 ---
 
 ## 项目状态与路线图
 
-**当前状态：M1 进行中。** M0 设计基线（契约、Schema、示例）已提交；M1 流水线（normalizer → adapters → conformance → CLI）已实现并通过测试。
+**当前状态：M1 进行中。** M0 设计基线（契约、Schema、示例）已提交；M1 流水线（normalizer → adapters → conformance → CLI）已实现并通过测试；Web 控制台（工作区选择器 + 文档/编辑器 + 向导 + 流水线面板 + 开发环境控制）是交互面。
 
 | 里程碑 | 范围 | 状态 |
 |---|---|---|

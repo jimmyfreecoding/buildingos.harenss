@@ -1,7 +1,7 @@
 # BuildingOS Runtime Bootstrap & Configuration (M1 design draft v0.1)
 
 > Position: the runtime bootstrap and configuration-layering design — the last design block before writing code, bridging the normalizer (loads tenant documents) and the adapter (plugs into engines).
-> Decisions: b1 three-layer configuration split (D21) / b2 secrets via env injection in M1, secret store in M2 / b3 CLI wizard in M1 (admin web belongs to M3) / b4 dev and prod as two postures of the same runtime.
+> Decisions: b1 three-layer configuration split (D21) / b2 secrets via env injection in M1, secret store in M2 / b3 web console is the interaction surface in M1 (CLI keeps init/dev) / b4 dev and prod as two postures of the same runtime.
 > Related: [configs.schema](../schemas/configs.schema.md), [normalizer-design.md](normalizer-design.md), [tenancy-model.md](tenancy-model.md), [Contract Philosophy](contract-philosophy.md) D21.
 >
 > 中文版：[runtime-bootstrap_cn.md](runtime-bootstrap_cn.md)
@@ -91,7 +91,7 @@ buildingos init (this design)
 |---|---|---|
 | b1 | Configuration layering | **Three-layer split (D21)**: bootstrap / document (Git) / secret (env, never in Git); keys never entering the repository is the security baseline |
 | b2 | Secret storage | **M1 env injection + M2 secret store** (the env channel stays; only the source changes) |
-| b3 | Bootstrap interaction form | **CLI wizard in M1** (the interaction surface is the terminal: `buildingos init` — language first, then engine / model / credentials / git); admin-web bootstrap UI is deferred to M3 built-in front-ends |
+| b3 | Bootstrap interaction form | **Web console in M1 (product decision, 2026-11)**: `buildingos web` is the interaction surface — workspace picker first, then the wizard / document / pipeline / dev panels in the browser; the CLI keeps the bootstrap commands (`init`, `dev`) and the console entry |
 | b4 | dev/prod relationship | **One runtime, two postures** (dev runtime / prod companion), sharing documents and contracts |
 
 ## 8. Open items

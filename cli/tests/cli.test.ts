@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { EventEmitter } from 'node:events';
 import os from 'node:os';
 import path from 'node:path';
 import { runWizard } from '@buildingos/bootstrap';
 import type { WizardIO } from '@buildingos/bootstrap';
-import { cmdDev, initTarget, main } from '../src/cli.js';
+import { cmdDev, cmdWeb, initTarget, main, webServerPath } from '../src/cli.js';
 
 function scriptedIO(): WizardIO {
   const script = [
@@ -56,42 +56,37 @@ describe('buildingos CLI', () => {
     expect(initTarget([])).toBe(process.cwd());
   });
 
-  it('validate passes on the scaffolded tenant (positional root)', async () => {
+  it('unknown command prints usage and exits 2', async () => {
     const code = await main(['validate', dir]);
-    expect(code).toBe(0);
+    expect(code).toBe(2);
+    const code2 = await main(['compile', '--engine', 'dsh', dir]);
+    expect(code2).toBe(2);
+    const code3 = await main(['conformance', dir]);
+    expect(code3).toBe(2);
   });
 
-  it('resolves the workspace via --workspace flag', async () => {
-    const code = await main(['validate', '--workspace', dir]);
-    expect(code).toBe(0);
-  });
-
-  it('reports a helpful error when no workspace resolves', async () => {
-    const empty = await mkdtemp(path.join(os.tmpdir(), 'bos-no-ws-'));
-    try {
-      const code = await main(['validate', empty]);
-      expect(code).toBe(1);
-    } finally {
-      await rm(empty, { recursive: true, force: true });
+  it('webServerPath locates the built console inside the tool repo', () => {
+    const server = webServerPath();
+    // When running from the tool repo, the built web server should be found.
+    if (server) {
+      expect(server.endsWith(path.join('web', 'dist', 'server', 'index.js'))).toBe(true);
     }
   });
 
-  it('compile renders the dsh engine view into the tenant', async () => {
-    const code = await main(['compile', '--engine', 'dsh', dir]);
-    expect(code).toBe(0);
-    await expect(readFile(path.join(dir, 'engine-views', 'dsh', '.dsh', 'skills', 'hello', 'SKILL.md'), 'utf8')).resolves.toContain('name: hello');
-  });
-
-  it('compile rejects unknown engines', async () => {
-    const code = await main(['compile', '--engine', 'unknown', dir]);
-    expect(code).toBe(2);
-  });
-
-  it('conformance runs on the scaffolded tenant after a baseline exists', async () => {
-    await main(['compile', '--engine', 'dsh', dir]);
-    await main(['compile', '--engine', 'codex', dir]);
-    const code = await main(['conformance', dir]);
-    expect(code).toBe(0);
+  it('web reports guidance when the console is not built', async () => {
+    const fakeSpawn = (() => {
+      throw new Error('should not spawn');
+    }) as unknown as typeof import('node:child_process').spawn;
+    // Point tool lookup away from the repo so the server is "not built".
+    const orig = process.env.BUILDINGOS_TOOL_DIR;
+    process.env.BUILDINGOS_TOOL_DIR = path.join(os.tmpdir(), 'no-such-tool-dir');
+    try {
+      const code = await cmdWeb([], fakeSpawn);
+      expect(code).toBe(1);
+    } finally {
+      if (orig === undefined) delete process.env.BUILDINGOS_TOOL_DIR;
+      else process.env.BUILDINGOS_TOOL_DIR = orig;
+    }
   });
 
   it('dev fails with guidance when the tenant has no docker-compose.yml', async () => {

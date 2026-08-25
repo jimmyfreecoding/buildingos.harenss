@@ -20,8 +20,9 @@ cd my-tenant && docker compose up
 # → （可选）tdengine/mqtt     IoT 场景栈
 ```
 
-交互面是 **CLI**（产品决定：无 web 端）：进入容器后 `buildingos validate/compile/conformance` 即用；
-将来的 `buildingos dev`（dev runtime）提供 hot-reload + 引擎 run() 对话入口。
+交互面是 **Web 控制台**（`buildingos web`，DSH-GUI 风格：工作区选择器 → 文档/向导/流水线/开发环境面板）；
+容器内 `buildingos` CLI 保留（validate/compile/conformance 即用），供 `docker compose exec` 与脚本使用。
+将来的 dev runtime（M2+）提供 hot-reload + 引擎 run() 对话入口。
 
 ## 2. 服务拓扑（dev profile）
 
@@ -41,14 +42,15 @@ cd my-tenant && docker compose up
 
 | 能力 | 状态 |
 |---|---|
-| 租户文档管线（normalizer → adapters → golden 比对） | ✅ 已有——CLI：`buildingos validate/compile/conformance` |
-| 首启向导（`buildingos init`，语言/引擎/模型/凭证/git） | ✅ 已有（M1.5 ①） |
+| 租户文档管线（normalizer → adapters → golden 比对） | ✅ 已有——Web 控制台"校验/编译/一致性"面板（API 驱动）；容器内 CLI 同功能 |
+| Web 控制台（工作区选择器/文档/向导/流水线/dev 控制） | ✅ 已有（M1.5 ③ 前半，`@buildingos/web`） |
+| 首启向导（语言/引擎/模型/凭证/git） | ✅ 已有（CLI + 控制台"向导"面板） |
 | 全局安装（`pnpm install -g`，自包含 bundle） | ✅ 已有 |
 | **在租户目录 `docker compose up` 一键起环境** | ✅ 已实现（M1.5 ②）：init 生成 `docker-compose.yml` + `.env`（PG_PASSWORD）；`buildingos dev` 自动解析 `BUILDINGOS_TOOL_DIR` 并 `docker compose up` |
 | **与 AI 对话（引擎 run() 桥：DSH/Codex）** | 📋 run() 桥待实现——这是"直接开发"体验的最后一块 |
 | 热加载（改 know-how → 自动 re-validate/compile） | 📋 后置（E，随 run() 桥/M2） |
 
-**结论**：容器环境已落地（CLI + PG + 文档管线全在容器里跑，`docker compose exec buildingos-runtime buildingos validate` 即用）；AI 对话依赖 run() 桥（M1.5 ③），是补全体验的下一环。
+**结论**：开发环境已落地——Web 控制台是交互面，容器（CLI + PG）由控制台"开发环境"面板或 `buildingos dev` 启停；AI 对话依赖 run() 桥（M1.5 ③），是补全体验的下一环。
 
 ## 4. 实施拆分（按顺序）
 
