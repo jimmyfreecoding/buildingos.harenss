@@ -1,0 +1,47 @@
+# BuildingOS dev environment — reference compose (M1.5 ②).
+# This is the template `buildingos init` writes into a tenant directory as
+# docker-compose.yml (self-contained: run it inside the tenant workspace).
+#
+#   cd my-tenant && docker compose up
+#
+# BUILDINGOS_TOOL_DIR must point at the BuildingOS tool repository (the repo
+# containing pnpm-workspace.yaml + deploy/Dockerfile); `buildingos dev` sets it
+# automatically. Mounts:
+#   .                    → /workspace   (the tenant workspace)
+#   <tool repo>          → build context (image build)
+name: buildingos-dev
+
+services:
+  buildingos-runtime:
+    build:
+      context: ${BUILDINGOS_TOOL_DIR:?set BUILDINGOS_TOOL_DIR to the buildingos tool repo}
+      dockerfile: deploy/Dockerfile
+    image: buildingos-runtime:dev
+    container_name: buildingos-runtime
+    working_dir: /workspace
+    # Keep the container alive; work inside it via `docker compose exec buildingos-runtime buildingos <cmd>`.
+    entrypoint: ['sleep', 'infinity']
+    volumes:
+      - .:/workspace
+    environment:
+      - BUILDINGOS_WORKSPACE=/workspace
+      - MODEL_TOKEN=${MODEL_TOKEN:-}
+      - GIT_TOKEN=${GIT_TOKEN:-}
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: buildingos-postgres
+    environment:
+      POSTGRES_USER: buildingos
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?set PG_PASSWORD in .env}
+      POSTGRES_DB: buildingos
+    ports:
+      - '${PG_PORT:-5432}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

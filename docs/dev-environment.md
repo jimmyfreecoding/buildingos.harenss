@@ -44,21 +44,21 @@ cd my-tenant && docker compose up
 | 租户文档管线（normalizer → adapters → golden 比对） | ✅ 已有——CLI：`buildingos validate/compile/conformance` |
 | 首启向导（`buildingos init`，语言/引擎/模型/凭证/git） | ✅ 已有（M1.5 ①） |
 | 全局安装（`pnpm install -g`，自包含 bundle） | ✅ 已有 |
-| **在租户目录 `docker compose up` 一键起环境** | 📋 本设计，待实现 |
+| **在租户目录 `docker compose up` 一键起环境** | ✅ 已实现（M1.5 ②）：init 生成 `docker-compose.yml` + `.env`（PG_PASSWORD）；`buildingos dev` 自动解析 `BUILDINGOS_TOOL_DIR` 并 `docker compose up` |
 | **与 AI 对话（引擎 run() 桥：DSH/Codex）** | 📋 run() 桥待实现——这是"直接开发"体验的最后一块 |
-| 热加载（改 know-how → 自动 re-validate/compile） | 📋 后置（E） |
+| 热加载（改 know-how → 自动 re-validate/compile） | 📋 后置（E，随 run() 桥/M2） |
 
-**结论**：容器环境可以先落地（CLI + PG + 文档管线全在容器里跑）；AI 对话依赖 run() 桥（M1.5 ③），是补全体验的下一环，不是本设计的前置。
+**结论**：容器环境已落地（CLI + PG + 文档管线全在容器里跑，`docker compose exec buildingos-runtime buildingos validate` 即用）；AI 对话依赖 run() 桥（M1.5 ③），是补全体验的下一环。
 
 ## 4. 实施拆分（按顺序）
 
-| # | 交付物 | 内容 |
-|---|---|---|
-| A | `deploy/Dockerfile` + `deploy/docker-compose.dev.yml` | buildingos-runtime（node）镜像定义 + postgres 服务；dev 模式挂载工具源码与租户目录 |
-| B | runtime 容器入口 | 容器内 `buildingos` CLI 可用（全局安装的 bundle 或源码链接）；绑定租户挂载（`/workspace`） |
-| C | init 生成租户 `docker-compose.yml` + `.env` 扩展 | 向导第 5 步同时写入 compose（引用工具仓库路径或镜像）+ PG_PASSWORD 等 |
-| D | `buildingos dev` 命令 | 等于 `docker compose up`（在租户工作区检测 compose） |
-| E | （后置）热加载 + 引擎 run() 桥 | watch 租户文档 → 自动 validate/compile；引擎对话（M1.5 ③） |
+| # | 交付物 | 内容 | 状态 |
+|---|---|---|---|
+| A | `deploy/Dockerfile` + `deploy/docker-compose.dev.yml` | buildingos-runtime（node）镜像定义 + postgres 服务；dev 模式挂载工具源码与租户目录 | ✅ 已实现 |
+| B | runtime 容器入口 | 容器内 `buildingos` CLI 可用（镜像内全局安装自包含 bundle）；/workspace 挂载租户 | ✅ 已实现 |
+| C | init 生成租户 `docker-compose.yml` + `.env` 扩展 | 向导第 5 步写入 compose（build context = 工具仓库，自动解析 BUILDINGOS_TOOL_DIR）+ PG_PASSWORD | ✅ 已实现 |
+| D | `buildingos dev` 命令 | 等于 `docker compose up`（在租户工作区检测 compose，自动注入 BUILDINGOS_TOOL_DIR） | ✅ 已实现 |
+| E | （后置）热加载 + 引擎 run() 桥 | watch 租户文档 → 自动 validate/compile；引擎对话（M1.5 ③） | 📋 待实现 |
 
 ## 5. 待确认决策点
 

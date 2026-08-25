@@ -320,7 +320,7 @@ Full guide: [docs/usage.md](docs/usage.md) · 中文：[docs/usage_cn.md](docs/u
 git clone <repo> && cd buildingos.harenss
 pnpm install          # workspace: normalizer / adapters / bootstrap / conformance / cli
 pnpm build            # required once — the bin points at dist/cli.bundle.cjs
-pnpm test             # 51 tests
+pnpm test             # 60 tests
 
 # Install the tool globally (once), then use it anywhere:
 pnpm setup                                  # one-time: add pnpm's global bin to PATH
@@ -333,7 +333,7 @@ buildingos compile --engine dsh my-tenant    # render the engine view
 buildingos conformance my-tenant            # compile-parity vs golden baseline
 ```
 
-The first-boot wizard (`buildingos init` — language, engine/model/credentials/git) is implemented. The local Docker dev environment (M1.5 Turnkey), Git webhooks (M2), dynamic UI (M3), the project wizard (M5) and the production companion (M5.5) are designed and pending implementation — see [Roadmap](#project-status--roadmap) and [docs/runtime-bootstrap.md](docs/runtime-bootstrap.md).
+The first-boot wizard (`buildingos init` — language, engine/model/credentials/git) and the tenant dev environment (`buildingos dev` — docker compose up: buildingos-runtime CLI container + postgres, M1.5 ②) are implemented. Git webhooks (M2), dynamic UI (M3), the project wizard (M5) and the production companion (M5.5) are designed and pending implementation — see [Roadmap](#project-status--roadmap) and [docs/runtime-bootstrap.md](docs/runtime-bootstrap.md).
 
 ---
 
@@ -345,7 +345,7 @@ The first-boot wizard (`buildingos init` — language, engine/model/credentials/
 |---|---|---|
 | **M0** | `.buildingos/` schema family (skills / rules / prompts / configs) + decision memo — see [`schemas/`](schemas/README.md) and [Contract Philosophy](docs/contract-philosophy.md) | ✅ Settled |
 | **M1** | Harness adapters: integrate DeepSeek Harness (DSH) + Codex harness as pluggable engines, with **auto version tracking for adopted engines** — upstream release hooks → auto-build/conformance (no manual maintenance). New engine adoption is a deliberate, community-reviewed process (M4+) | In progress (design draft in `docs/`) |
-| **M1.5** | Turnkey delivery: Docker Compose + Helm charts bundling runtime, adapters, front-ends, and the support stack (PostgreSQL / TDengine / MQTT broker) — one command to a working prototype | Planned |
+| **M1.5** | Turnkey delivery: Docker Compose + Helm charts bundling runtime, adapters, front-ends, and the support stack (PostgreSQL / TDengine / MQTT broker) — one command to a working prototype | In progress (dev compose ✅, Helm + bundled stack pending) |
 | **M2** | Git integration: webhook-driven hot reload, PR CI checks | Planned |
 | **M3** | UI skill & coding-rule packs (top-tier UI as documents) + dynamic UI generation — prototype out of the box, zero front-end code | Planned |
 | **M4** | HaaS control plane: multi-tenant management, SLAs + vertical template packs (healthcare / finance / manufacturing / IoT) | Planned |

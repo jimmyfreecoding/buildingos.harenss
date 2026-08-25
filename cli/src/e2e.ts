@@ -3,7 +3,7 @@
  *   init (wizard, scripted answers) → validate → compile dsh → compile codex → conformance.
  * Run via: pnpm --filter @buildingos/cli demo   (or `pnpm verify` at the repo root)
  */
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runWizard } from '@buildingos/bootstrap';
@@ -31,6 +31,7 @@ async function e2e(): Promise<number> {
     const wizard = await runWizard(dir, io);
     const steps: Array<[string, number]> = [
       ['init (first-boot wizard, language first)', wizard.ok ? 0 : 1],
+      ['dev env artifacts (docker-compose.yml + .env + PG_PASSWORD)', devEnvArtifactsOk(dir) ? 0 : 1],
       ['validate', await main(['validate', dir])],
       ['compile --engine dsh', await main(['compile', '--engine', 'dsh', dir])],
       ['compile --engine codex', await main(['compile', '--engine', 'codex', dir])],
@@ -45,6 +46,17 @@ async function e2e(): Promise<number> {
     return failed === 0 ? 0 : 1;
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** M1.5 ②: init must write the dev-environment artifacts (compose + .env secrets). */
+function devEnvArtifactsOk(dir: string): boolean {
+  try {
+    const compose = existsSync(path.join(dir, 'docker-compose.yml'));
+    const env = readFileSync(path.join(dir, '.env'), 'utf8');
+    return compose && /PG_PASSWORD=[0-9a-f]{24}/.test(env);
+  } catch {
+    return false;
   }
 }
 

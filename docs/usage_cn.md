@@ -33,9 +33,9 @@ cd my-tenant
 #   2. 选模型（内置起始目录）       → runtime.yaml model
 #   3. 模型 token                   → .env（绝不进 Git，D21）
 #   4. git 凭证（可跳过）           → .env
-#   5. 脚手架 .buildingos/ + knowledge/ + .gitignore
+#   5. 脚手架 .buildingos/ + knowledge/ + .gitignore + docker-compose.yml + .env
 #   6. 校验（normalizer）
-#   7. 进入 runtime（dev 模式）——runtime CLI 随 M1.5 交付
+#   7. 总结与下一步
 buildingos init my-tenant
 
 # 校验与 lint（normalizer 流水线第 1–2 段）
@@ -47,6 +47,12 @@ buildingos compile --engine codex my-tenant
 
 # Conformance：编译产物 vs golden 引擎视图基线
 buildingos conformance my-tenant
+
+# 启动开发环境（租户内 docker compose up；M1.5 ②）
+buildingos dev my-tenant
+# → buildingos-runtime 容器（容器内带 `buildingos` CLI，/workspace 挂载租户）
+# → postgres :5432（状态库；PG_PASSWORD 在 .env，绝不进 Git，D21）
+# 进容器干活：docker compose exec buildingos-runtime buildingos validate
 ```
 
 ### `init` 之后租户长什么样
@@ -59,6 +65,8 @@ my-tenant/
 │   ├── prompts/          # 人格（语气、语言）
 │   └── configs/          # runtime.yaml——引擎/模型/mcp_servers/沙箱/审批
 ├── knowledge/            # 世界模型——harness 生成、人工评审（D19）
+├── docker-compose.yml    # 开发环境（M1.5 ②）：buildingos-runtime + postgres
+├── .env                  # 秘密：MODEL_TOKEN / GIT_TOKEN / PG_PASSWORD（绝不进 Git，D21）
 └── .gitignore            # D21：钥匙绝不进仓库
 ```
 
@@ -83,7 +91,8 @@ cd my-tenant && buildingos validate          # 向上搜索命中标记
 
 | 命令 | 作用 |
 |---|---|
-| `buildingos init <dir>` | 脚手架租户仓库（starter rules/skills/prompts/configs/knowledge + .gitignore） |
+| `buildingos init <dir>` | 脚手架租户仓库（starter rules/skills/prompts/configs/knowledge + .gitignore + docker-compose.yml + .env） |
+| `buildingos dev [root]` | 启动租户开发环境——租户内 `docker compose up`（buildingos-runtime CLI 容器 + postgres；M1.5 ②） |
 | `buildingos validate [root]` | 加载 + lint 租户：schema 校验、`ORDER_DUPLICATE`（D20）、`DEP_UNRESOLVED`（D3）、权限禁手写（D14）；有 error 时退出码非零 |
 | `buildingos compile --engine dsh\|codex [root] [--out <dir>]` | 从 TenantDocs 渲染引擎视图；默认写入 `engine-views/<engine>` |
 | `buildingos conformance [root]` | G1 编译黄金比对（需先有 `engine-views/`）；G2–G4 引擎门控，跳过 |
@@ -104,17 +113,19 @@ AI 应用的一切——行为、能力、人格、权限——都是租户仓�
 完整的首启体验在 [runtime-bootstrap.md](runtime-bootstrap.md) 与路线图中：
 
 ```
-buildingos init            # M1.5 CLI 向导（已设计）：
+buildingos init            # M1.5 CLI 向导（已实现）：
+                           #   0. 选择语言（中文 / English）
                            #   1. 选引擎（dsh / codex）
                            #   2. 选模型
                            #   3. 模型凭证 → .env（绝不进 Git，D21）
                            #   4. git 凭证 → .env
-                           #   5. 指向 / 脚手架租户仓库
+                           #   5. 脚手架租户仓库 + docker-compose.yml + .env
                            #   6. 校验（normalizer）
-                           #   7. 进入 runtime（dev 模式）
+                           #   7. 总结与下一步
 
-buildingos dev             # dev runtime（M1.5/M2）：本地进程 + 热加载 + 动态 UI；
-                           #   docker compose 拉起 PG / 状态存储
+buildingos dev             # M1.5 ②（已实现）：租户内 docker compose up——
+                           #   buildingos-runtime CLI 容器 + postgres 状态库。
+                           #   热加载与引擎 run() 桥随 M1.5 ③ / M2 落地。
 
 buildingos serve --prod    # 生产伴生（M5.5）：同一 runtime 的运维姿态——
                            #   观察 → 诊断 → Issue → PR → CI 构建 → pull → up
@@ -122,10 +133,10 @@ buildingos serve --prod    # 生产伴生（M5.5）：同一 runtime 的运维�
 
 | 阶段 | 里程碑 | 状态 |
 |---|---|---|
-| normalizer / 适配器 / conformance / 最小 CLI | M1 | ✅ 已实现，51 测试 |
+| normalizer / 适配器 / conformance / 最小 CLI | M1 | ✅ 已实现，60 测试 |
 | 首启向导（init 第 0–5 步：语言/引擎/模型/凭证/git/脚手架） | M1.5 | ✅ 已实现——[runtime-bootstrap.md](runtime-bootstrap.md) §2 |
-| Runtime CLI 入口（第 7 步：`buildingos dev` / `serve --prod`） | M1.5/M5.5 | 📋 待实现 |
-| 本地 Docker 开发环境（Turnkey compose：runtime + PG + 捆绑服务） | M1.5 | 📋 已设计——README 路线图 |
+| 开发环境（`buildingos dev` = docker compose up：buildingos-runtime + postgres） | M1.5 ② | ✅ 已实现——[dev-environment.md](dev-environment.md) |
+| Runtime CLI 入口（第 7 步：`buildingos serve --prod`） | M5.5 | 📋 待实现 |
 | Git 集成（webhook 热加载、PR CI 检查） | M2 | 📋 计划中 |
 | 动态 UI（从 UI-skill 文档生成 admin web / dashboard） | M3 | 📋 计划中 |
 | 新项目向导（交付清单 → 部署文件 → 自动部署） | M5 | 📋 计划中 |
@@ -135,7 +146,7 @@ buildingos serve --prod    # 生产伴生（M5.5）：同一 runtime 的运维�
 
 ## 5. 测试当前状态
 
-一条命令验证全部（51 个单元/验收测试 + 完整 CLI 端到端流程）：
+一条命令验证全部（60 个单元/验收测试 + 完整 CLI 端到端流程）：
 
 ```bash
 pnpm verify        # typecheck → build → test → e2e demo
@@ -149,9 +160,9 @@ pnpm --filter @buildingos/cli demo  # init(向导) → validate → compile dsh/
 | `@buildingos/normalizer` | 15 | frontmatter 提取（warn-and-skip）、五家族 loader、规范化（kebab→camel、默认值、人格合并 D10、权限派生 D6）、集合级 lint（`ORDER_DUPLICATE` D20、`DEP_UNRESOLVED` D3、`PERMISSIONS_HAND_WRITTEN` D14、路径检查 D5/D19）、输出门禁、构造的负面租户 |
 | `@buildingos/adapter-dsh` | 6 | compile() 渲染 DSH 视图；golden 黄金比对（frontmatter 语义+正文）、`metadata.x-buildingos` 无损携带（D2/D4）、system-prompt sections 按 order（D20）、run() 待桥 |
 | `@buildingos/adapter-codex` | 6 | compile() 渲染 Codex 视图；golden 黄金比对（SKILL.md parser 消费字段、openai.yaml 语义、AGENTS.md 顺序、config.toml D13） |
-| `@buildingos/bootstrap` | 6 | `initTenant`（脚手架 + 工具仓库守卫 + .gitignore + .env/.env.example D21）、向导（语言优先、引擎/模型/凭证/git、中英双语） |
+| `@buildingos/bootstrap` | 12 | `initTenant`（脚手架 + 工具仓库守卫 + .gitignore + .env/.env.example D21）、向导（语言优先、引擎/模型/凭证/git、中英双语）、dev 环境产物（`renderDevCompose`/`renderDevEnv`/`randomPgPassword`/`findToolDir`——M1.5 ②） |
 | `@buildingos/conformance` | 3 | G1 编译黄金比对（双引擎）、租户错误上抛、G2–G4 引擎门控骨架 |
-| `@buildingos/cli` | 15 | 首启向导（语言优先、引擎/模型/凭证/git、`.env` D21、`.env.example`）、workspace 解析（flag/env/向上搜索/报错）、validate/compile/conformance 命令 |
+| `@buildingos/cli` | 18 | 首启向导（语言优先、引擎/模型/凭证/git、`.env` D21、`.env.example`）、workspace 解析（flag/env/向上搜索/报错）、validate/compile/conformance 命令、`dev`（compose 检测 + docker spawn，M1.5 ②） |
 
 **如何加测试**：在包的 `tests/` 放 `*.test.ts`（夹具：`examples/` 做验收用例，临时构造目录做负面用例），然后 `pnpm --filter <包名> test`。golden engine-views 是 compile 的字节/语义基线（conformance G1）。
 

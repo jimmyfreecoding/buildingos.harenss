@@ -366,7 +366,7 @@ runtime:
 git clone <仓库> && cd buildingos.harenss
 pnpm install          # 工作区：normalizer / adapters / bootstrap / conformance / cli
 pnpm build            # 必须一次——bin 指向 dist/cli.bundle.cjs
-pnpm test             # 51 个测试
+pnpm test             # 60 个测试
 
 # 全局安装工具（一次），之后随处可用：
 pnpm setup                                  # 一次性：把 pnpm 全局 bin 加入 PATH
@@ -389,7 +389,7 @@ buildingos conformance my-tenant            # 编译产物 vs golden 基线
 |---|---|---|
 | **M0** | `.buildingos/` Schema 规范（rules / skills / prompts / configs）+ 决策备忘录 | ✅ 已定 |
 | **M1** | Harness 适配器：接入 DSH + Codex 作为可插拔引擎，含**已收录引擎的自动版本跟踪**——上游 release hook → 自动构建/conformance（零人工维护）；收录新引擎是社区评审的人工决策（M4+） | 进行中（实现已落地） |
-| **M1.5** | Turnkey 交付：Docker Compose + Helm chart，捆绑 runtime、适配器、前端与配套服务栈（PostgreSQL / TDengine / MQTT broker）——一条命令跑起可用原型 | 计划中 |
+| **M1.5** | Turnkey 交付：Docker Compose + Helm chart，捆绑 runtime、适配器、前端与配套服务栈（PostgreSQL / TDengine / MQTT broker）——一条命令跑起可用原型 | 进行中（dev compose ✅，Helm + 配套栈待做） |
 | **M2** | Git 集成：webhook 驱动热加载、PR CI 检查 | 计划中 |
 | **M3** | UI Skill 与编码规则包（"顶级 UI"即文档）+ 动态 UI 生成——开箱出原型，零前端代码 | 计划中 |
 | **M4** | HaaS 控制平面：多租户管理、SLA + 行业模板包（医疗 / 金融 / 制造 / IoT） | 计划中 |

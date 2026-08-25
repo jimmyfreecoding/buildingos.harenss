@@ -19,6 +19,7 @@ import { codexAdapter } from '@buildingos/adapter-codex';
 import { dshAdapter } from '@buildingos/adapter-dsh';
 import { loadTenantDocs } from '@buildingos/normalizer';
 import { initTenant } from './init.js';
+import { randomPgPassword, renderDevCompose, renderDevEnv } from './devenv.js';
 import type { Choice, WizardIO } from './io.js';
 
 export type WizardLanguage = 'zh' | 'en';
@@ -61,6 +62,8 @@ export interface L10n {
   gitSkipped: string;
   step5: string;
   scaffoldDone: string;
+  composeWritten: string;
+  composeNoToolDir: string;
   step6: string;
   validateOk: string;
   validateFail: string;
@@ -87,6 +90,8 @@ export const ZH: L10n = {
   gitSkipped: 'Git 凭证：跳过（稍后可写入 .env 的 GIT_TOKEN）',
   step5: '第 5 步：脚手架租户仓库',
   scaffoldDone: '租户仓库已就绪：',
+  composeWritten: '已生成 docker-compose.yml（dev 环境：buildingos-runtime + postgres）——`cd <tenant> && docker compose up` 即起开发环境',
+  composeNoToolDir: '提示：未探测到 BuildingOS 工具仓库路径，compose 需要 BUILDINGOS_TOOL_DIR 环境变量（`buildingos dev` 会自动处理）',
   step6: '第 6 步：校验（normalizer）',
   validateOk: '校验通过（OK）。',
   validateFail: '校验失败（存在 error，请先修复）。',
@@ -113,6 +118,8 @@ export const EN: L10n = {
   gitSkipped: 'Git credentials: skipped (set GIT_TOKEN in .env later)',
   step5: 'Step 5: scaffold the tenant repository',
   scaffoldDone: 'Tenant repository ready:',
+  composeWritten: 'docker-compose.yml written (dev env: buildingos-runtime + postgres) — `cd <tenant> && docker compose up` starts the dev environment',
+  composeNoToolDir: 'Note: the BuildingOS tool repo path was not detected; compose needs BUILDINGOS_TOOL_DIR (`buildingos dev` handles this automatically)',
   step6: 'Step 6: validate (normalizer)',
   validateOk: 'Validation passed (OK).',
   validateFail: 'Validation failed (errors present; fix before proceeding).',
@@ -129,7 +136,11 @@ export interface WizardResult {
   transcript: string[];
 }
 
-export async function runWizard(dir: string, io: WizardIO): Promise<Omit<WizardResult, 'transcript'>> {
+export async function runWizard(
+  dir: string,
+  io: WizardIO,
+  opts?: { toolDir?: string },
+): Promise<Omit<WizardResult, 'transcript'>> {
   // step 0 — language first (per product decision: the very first question)
   const language = await io.choose<WizardLanguage>(ZH.step0, [
     { value: 'zh', label: ZH.langZh },
@@ -173,8 +184,15 @@ export async function runWizard(dir: string, io: WizardIO): Promise<Omit<WizardR
   await writeFile(cfgPath, cfgNext, 'utf8');
 
   const envPath = path.join(dir, '.env');
-  await writeFile(envPath, `MODEL_TOKEN=${modelToken}\n${gitToken ? `GIT_TOKEN=${gitToken}` : '# GIT_TOKEN (skipped; reuse system credentials)'}\n`, 'utf8');
-  await writeFile(path.join(dir, '.env.example'), 'MODEL_TOKEN=\nGIT_TOKEN=\n', 'utf8');
+  const pgPassword = randomPgPassword();
+  await writeFile(envPath, renderDevEnv(modelToken, gitToken || undefined, pgPassword), 'utf8');
+  await writeFile(path.join(dir, '.env.example'), 'MODEL_TOKEN=\nGIT_TOKEN=\nPG_PASSWORD=\n', 'utf8');
+
+  // M1.5 ②: the dev environment compose lives in the tenant directory (self-contained).
+  await writeFile(path.join(dir, 'docker-compose.yml'), renderDevCompose({ tenantDir: dir, toolDir: opts?.toolDir }), 'utf8');
+  io.note(`  + docker-compose.yml`);
+  io.note(`  ${t.composeWritten}`);
+  if (!opts?.toolDir) io.note(`  ${t.composeNoToolDir}`);
   io.note(`  ${t.scaffoldDone} ${dir}`);
   io.note(`  ${t.secretNote}`);
 
@@ -203,7 +221,11 @@ export interface WizardAnswers {
   gitToken?: string;
 }
 
-export async function runWizardFromAnswers(dir: string, a: WizardAnswers): Promise<WizardResult> {
+export async function runWizardFromAnswers(
+  dir: string,
+  a: WizardAnswers,
+  opts?: { toolDir?: string },
+): Promise<WizardResult> {
   const transcript: string[] = [];
   const io: WizardIO = {
     async choose(_q, options) {
@@ -226,6 +248,6 @@ export async function runWizardFromAnswers(dir: string, a: WizardAnswers): Promi
       transcript.push(m);
     },
   };
-  const result = await runWizard(dir, io);
+  const result = await runWizard(dir, io, opts);
   return { ...result, transcript };
 }
