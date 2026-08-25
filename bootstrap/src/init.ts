@@ -1,7 +1,10 @@
 /**
  * Tenant scaffold — the first-boot artifact set (runtime-bootstrap §2, step 5).
  * A minimal starter: .buildingos/{rules,skills,prompts,configs} + knowledge/ + .gitignore (D21).
+ * Refuses to scaffold inside the BuildingOS tool repository (guards against
+ * overwriting the tool's own files, e.g. its .gitignore).
  */
+import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -68,6 +71,13 @@ approval: on-request
 };
 
 export async function initTenant(dir: string): Promise<string[]> {
+  // Guard: never scaffold into the BuildingOS tool repository (its marker is pnpm-workspace.yaml).
+  if (existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
+    throw new Error(
+      `refusing to scaffold into the BuildingOS tool repository (${dir} contains pnpm-workspace.yaml). ` +
+        'Create a separate tenant directory, e.g. `buildingos init ../my-tenant` or `buildingos init my-tenant`.',
+    );
+  }
   const written: string[] = [];
   for (const [rel, content] of Object.entries(STARTER)) {
     const full = path.join(dir, rel);

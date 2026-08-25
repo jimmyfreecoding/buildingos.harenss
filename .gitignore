@@ -3,7 +3,7 @@
 .env.*
 !.env.example
 
-# Node / TypeScript (M1 implementation)
+# Node / TypeScript (workspace packages)
 node_modules/
 dist/
 build/

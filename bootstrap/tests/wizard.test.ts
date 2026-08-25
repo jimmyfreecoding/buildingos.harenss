@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { loadTenantDocs } from '@buildingos/normalizer';
-import { runWizard, runWizardFromAnswers } from '../src/index.js';
+import { runWizard, runWizardFromAnswers, initTenant } from '../src/index.js';
 import type { WizardIO } from '../src/index.js';
 
 /** Scripted I/O driving the wizard deterministically (zh answers by default). */
@@ -116,6 +116,16 @@ describe('first-boot wizard (runtime-bootstrap §2)', () => {
       expect(env).toContain('MODEL_TOKEN=tok-web');
     } finally {
       await rm(dir3, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to scaffold inside the BuildingOS tool repository (guard)', async () => {
+    const tool = await mkdtemp(path.join(os.tmpdir(), 'bos-tool-'));
+    try {
+      await writeFile(path.join(tool, 'pnpm-workspace.yaml'), 'packages:\n  - cli\n');
+      await expect(initTenant(tool)).rejects.toThrow(/refusing to scaffold into the BuildingOS tool repository/);
+    } finally {
+      await rm(tool, { recursive: true, force: true });
     }
   });
 });
