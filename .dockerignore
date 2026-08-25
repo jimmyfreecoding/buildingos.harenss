@@ -5,7 +5,6 @@ dist/
 build/
 *.tsbuildinfo
 .git/
-web/
 *.log
 .env
 .env.*

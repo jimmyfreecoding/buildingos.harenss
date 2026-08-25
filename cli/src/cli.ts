@@ -42,7 +42,7 @@ export function toolDirFor(): string | undefined {
   return findToolDir(process.cwd());
 }
 
-/** `buildingos dev` — bring up the tenant's docker compose (M1.5 ②, dev-environment.md §4 D). */
+/** `buildingos dev` — build the runtime image if needed, then bring up the compose. */
 export async function cmdDev(
   root: string,
   rest: string[],
@@ -55,17 +55,50 @@ export async function cmdDev(
   }
   const toolDir = toolDirFor();
   const extra = rest.filter((a) => a !== '--workspace' && a !== '-w');
-  const args = ['compose', 'up', ...extra];
-  console.log(`dev: docker compose up (workspace=${root})${toolDir ? `, BUILDINGOS_TOOL_DIR=${toolDir}` : ''}`);
-  const child = spawner('docker', args, {
+
+  // The compose references buildingos-runtime:dev by name. Build it from the
+  // tool repo first if it isn't present (or if --build was requested).
+  const needsBuild = extra.includes('--build') || !(await imageExists('buildingos-runtime:dev', spawner));
+  if (needsBuild) {
+    if (!toolDir) {
+      console.error('dev: the buildingos-runtime:dev image is missing and the tool repo was not found. Set BUILDINGOS_TOOL_DIR to the tool repo, then re-run (it builds the image).');
+      return 1;
+    }
+    const dockerfile = path.join(toolDir, 'deploy', 'Dockerfile');
+    if (!existsSync(dockerfile)) {
+      console.error(`dev: no deploy/Dockerfile in ${toolDir} — is BUILDINGOS_TOOL_DIR the buildingos tool repo?`);
+      return 1;
+    }
+    const bargs = ['build', '-t', 'buildingos-runtime:dev', '-f', dockerfile, toolDir];
+    console.log(`dev: building buildingos-runtime:dev from ${toolDir}…`);
+    const b = await runSpawn(spawner, 'docker', bargs, { cwd: root, env: process.env });
+    if (b !== 0) return b;
+  }
+
+  const args = ['compose', 'up', ...extra.filter((a) => a !== '--build')];
+  console.log(`dev: docker compose up (workspace=${root})`);
+  return runSpawn(spawner, 'docker', args, {
     cwd: root,
-    stdio: 'inherit',
     env: { ...process.env, BUILDINGOS_TOOL_DIR: toolDir ?? '', BUILDINGOS_WORKSPACE: root },
   });
-  return await new Promise<number>((resolve) => {
+}
+
+/** Whether an image exists locally (docker image inspect). */
+async function imageExists(image: string, spawner: typeof spawn): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const child = spawner('docker', ['image', 'inspect', image], { stdio: 'ignore' });
+    child.on('exit', (code) => resolve(code === 0));
+    child.on('error', () => resolve(false));
+  });
+}
+
+/** Spawn a command and resolve its exit code (inherit stdio). */
+function runSpawn(spawner: typeof spawn, cmd: string, args: string[], opts: { cwd: string; env: NodeJS.ProcessEnv }): Promise<number> {
+  const child = spawner(cmd, args, { cwd: opts.cwd, stdio: 'inherit', env: opts.env });
+  return new Promise<number>((resolve) => {
     child.on('exit', (code) => resolve(code ?? 0));
     child.on('error', (err) => {
-      console.error(`dev: failed to start docker — ${err.message} (is Docker installed and running?)`);
+      console.error(`dev: failed to start ${cmd} — ${err.message} (is Docker installed and running?)`);
       resolve(1);
     });
   });

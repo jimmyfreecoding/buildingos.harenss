@@ -11,12 +11,13 @@ COPY . .
 ENV PATH="/root/.local/share/pnpm/bin:$PATH"
 
 # corepack gives us pnpm; the workspace's allowBuilds (esbuild) allows its
-# postinstall to fetch the platform binary. Then: install → build → pack the
-# self-contained CLI tarball → global install → drop the temp tarball.
-# The tool sources stay at /tool for in-container debugging (dogfooding).
+# postinstall to fetch the platform binary. Then install and build ONLY the
+# CLI (+ its workspace deps) — the runtime image needs the self-contained CLI
+# bundle, not the web console front-end (skip web to keep the image lean and
+# avoid the vite build). Pack the tarball → global install → drop the temp.
 RUN corepack enable \
  && pnpm install --frozen-lockfile \
- && pnpm build \
+ && pnpm --filter @buildingos/cli... build \
  && cd cli \
  && pnpm pack --pack-destination /tmp \
  && pnpm add -g /tmp/buildingos-cli-*.tgz \

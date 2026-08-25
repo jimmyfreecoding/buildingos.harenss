@@ -10,24 +10,20 @@ import {
 } from '../src/index.js';
 
 describe('dev-environment artifacts (M1.5 ②, dev-environment.md)', () => {
-  it('renderDevCompose embeds the tool dir when known', () => {
-    const yml = renderDevCompose({ tenantDir: 'C:/t/tenant', toolDir: 'C:/t/buildingos' });
-    expect(yml).toContain('context: C:/t/buildingos');
-    expect(yml).toContain('dockerfile: deploy/Dockerfile');
+  it('renderDevCompose is self-contained — image reference, no tool-repo path or required env var', () => {
+    const yml = renderDevCompose({ tenantDir: 'C:/t/tenant' });
     expect(yml).toContain('image: buildingos-runtime:dev');
     expect(yml).toContain('postgres:16-alpine');
     expect(yml).toContain('- .:/workspace');
     expect(yml).toContain('BUILDINGOS_WORKSPACE=/workspace');
+    // No build context, no tool-repo path, no BUILDINGOS_TOOL_DIR required var.
+    expect(yml).not.toContain('context:');
+    expect(yml).not.toContain('BUILDINGOS_TOOL_DIR');
+    expect(yml).not.toContain(':?set BUILDINGOS_TOOL_DIR');
     // compose must keep the ${MODEL_TOKEN:-} / ${PG_PASSWORD:?} interpolations literal
     expect(yml).toContain('${MODEL_TOKEN:-}');
     expect(yml).toContain('${PG_PASSWORD:?set PG_PASSWORD in .env}');
-    // a platform path is normalized to forward slashes for the container
     expect(yml).not.toContain('\\');
-  });
-
-  it('renderDevCompose falls back to BUILDINGOS_TOOL_DIR when the tool dir is unknown', () => {
-    const yml = renderDevCompose({ tenantDir: '/tmp/tenant' });
-    expect(yml).toContain('${BUILDINGOS_TOOL_DIR:?set BUILDINGOS_TOOL_DIR to the buildingos tool repo}');
   });
 
   it('renderDevEnv keeps model/git tokens and adds a random PG password', () => {

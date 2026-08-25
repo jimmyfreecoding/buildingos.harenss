@@ -1,25 +1,22 @@
 # BuildingOS dev environment — reference compose (M1.5 ②).
 # This is the template `buildingos init` writes into a tenant directory as
-# docker-compose.yml (self-contained: run it inside the tenant workspace).
+# docker-compose.yml. It is SELF-CONTAINED: it references the
+# buildingos-runtime:dev image by name — no tool-repo path, no required env var.
 #
 #   cd my-tenant && docker compose up
 #
-# BUILDINGOS_TOOL_DIR must point at the BuildingOS tool repository (the repo
-# containing pnpm-workspace.yaml + deploy/Dockerfile); `buildingos dev` sets it
-# automatically. Mounts:
-#   .                    → /workspace   (the tenant workspace)
-#   <tool repo>          → build context (image build)
+# Build the runtime image first (once) from the tool repo, or let `buildingos dev`
+# do it automatically:
+#   docker build -t buildingos-runtime:dev -f deploy/Dockerfile <tool-repo>
+# Mounts the tenant workspace at /workspace (the CLI inside operates on it).
 name: buildingos-dev
 
 services:
   buildingos-runtime:
-    build:
-      context: ${BUILDINGOS_TOOL_DIR:?set BUILDINGOS_TOOL_DIR to the buildingos tool repo}
-      dockerfile: deploy/Dockerfile
     image: buildingos-runtime:dev
     container_name: buildingos-runtime
     working_dir: /workspace
-    # Keep the container alive; work inside it via `docker compose exec buildingos-runtime buildingos <cmd>`.
+    # Keep the container alive; work inside it via: docker compose exec buildingos-runtime buildingos <cmd>.
     entrypoint: ['sleep', 'infinity']
     volumes:
       - .:/workspace

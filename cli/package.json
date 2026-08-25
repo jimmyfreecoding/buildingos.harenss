@@ -24,7 +24,6 @@
     "@buildingos/bootstrap": "workspace:*",
     "@buildingos/conformance": "workspace:*",
     "@buildingos/normalizer": "workspace:*",
-    "@buildingos/web": "workspace:*",
     "@types/node": "^22.10.0",
     "esbuild": "^0.28.0",
     "typescript": "^5.7.0",

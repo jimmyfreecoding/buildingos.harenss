@@ -69,7 +69,7 @@ describe('first-boot wizard (runtime-bootstrap §2)', () => {
     expect(gitignore).toContain('!.env.example');
   });
 
-  it('scaffolds the dev environment compose (M1.5 ②) and embeds the tool dir when provided', async () => {
+  it('scaffolds the dev environment compose (M1.5 ②) — self-contained, no tool-repo path', async () => {
     const dir4 = await mkdtemp(path.join(os.tmpdir(), 'bos-wiz-dev-'));
     try {
       const io = scriptedIO([
@@ -81,9 +81,12 @@ describe('first-boot wizard (runtime-bootstrap §2)', () => {
       ]);
       await runWizard(dir4, io, { toolDir: 'C:/tool/buildingos.harenss' });
       const yml = await readFile(path.join(dir4, 'docker-compose.yml'), 'utf8');
-      expect(yml).toContain('context: C:/tool/buildingos.harenss');
+      expect(yml).toContain('image: buildingos-runtime:dev');
       expect(yml).toContain('buildingos-runtime');
       expect(yml).toContain('postgres:16-alpine');
+      // Self-contained: no tool-repo path, no required BUILDINGOS_TOOL_DIR var.
+      expect(yml).not.toContain('context:');
+      expect(yml).not.toContain('BUILDINGOS_TOOL_DIR');
     } finally {
       await rm(dir4, { recursive: true, force: true });
     }

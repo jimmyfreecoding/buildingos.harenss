@@ -99,21 +99,43 @@ describe('buildingos CLI', () => {
     }
   });
 
-  it('dev runs `docker compose up` in the tenant with BUILDINGOS_TOOL_DIR set', async () => {
+  it('dev runs `docker compose up` in the tenant (image already present → no build)', async () => {
     const calls: Array<{ cmd: string; args: string[]; opts: { cwd: string; env: Record<string, string | undefined> } }> = [];
     const fakeChild = new EventEmitter() as EventEmitter & { on: (e: string, l: (...a: unknown[]) => void) => EventEmitter };
     const fakeSpawn = ((cmd: string, args: string[], opts: { cwd: string; env: Record<string, string | undefined> }) => {
       calls.push({ cmd, args, opts });
+      // image inspect → exit 0 (image exists) → skip the build, only compose up.
       process.nextTick(() => fakeChild.emit('exit', 0));
       return fakeChild;
     }) as unknown as typeof import('node:child_process').spawn;
     const code = await cmdDev(dir, [], fakeSpawn);
     expect(code).toBe(0);
-    expect(calls).toHaveLength(1);
-    expect(calls[0].cmd).toBe('docker');
-    expect(calls[0].args.slice(0, 2)).toEqual(['compose', 'up']);
-    expect(calls[0].opts.cwd).toBe(dir);
-    expect(calls[0].opts.env.BUILDINGOS_WORKSPACE).toBe(dir);
+    // First call inspects the image; then compose up.
+    expect(calls[0].args.slice(0, 3)).toEqual(['image', 'inspect', 'buildingos-runtime:dev']);
+    const upCall = calls.find((c) => c.args.slice(0, 2).join(' ') === 'compose up');
+    expect(upCall).toBeDefined();
+    expect(upCall?.opts.cwd).toBe(dir);
+    expect(upCall?.opts.env.BUILDINGOS_WORKSPACE).toBe(dir);
+  });
+
+  it('dev builds the runtime image when it is missing, then runs compose up', async () => {
+    const calls: Array<{ cmd: string; args: string[]; opts: { cwd: string } }> = [];
+    const fakeChild = new EventEmitter() as EventEmitter & { on: (e: string, l: (...a: unknown[]) => void) => EventEmitter };
+    const fakeSpawn = ((cmd: string, args: string[], opts: { cwd: string }) => {
+      calls.push({ cmd, args, opts });
+      // image inspect → exit 1 (missing) so the build runs; then everything else succeeds.
+      const isInspect = args[0] === 'image' && args[1] === 'inspect';
+      process.nextTick(() => fakeChild.emit('exit', isInspect ? 1 : 0));
+      return fakeChild;
+    }) as unknown as typeof import('node:child_process').spawn;
+    const code = await cmdDev(dir, [], fakeSpawn);
+    expect(code).toBe(0);
+    const buildCall = calls.find((c) => c.args[0] === 'build');
+    expect(buildCall).toBeDefined();
+    expect(buildCall?.args).toContain('-t');
+    expect(buildCall?.args).toContain('buildingos-runtime:dev');
+    const upCall = calls.find((c) => c.args.slice(0, 2).join(' ') === 'compose up');
+    expect(upCall).toBeDefined();
   });
 
   it('dev reports docker failures', async () => {
