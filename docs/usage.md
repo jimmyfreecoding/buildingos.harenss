@@ -1,7 +1,7 @@
 # BuildingOS Usage Guide
 
 > How to use this project today, and the target workflow (designed, pending implementation).
-> 中文版：[usage_cn.md](usage_cn.md) · 想亲手跑一遍？见 [hands-on.md](hands-on.md)（中文：[hands-on_cn.md](hands-on_cn.md)）
+> 中文版：[usage_cn.md](usage_cn.md)
 
 ## 1. Quick start (works today)
 

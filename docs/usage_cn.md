@@ -1,7 +1,7 @@
 # BuildingOS 使用指南
 
 > 这个项目今天怎么用，以及目标工作流（设计已定、实现待做）。
-> English: [usage.md](usage.md) · 想亲手跑一遍？见 [hands-on_cn.md](hands-on_cn.md)（英文：[hands-on.md](hands-on.md)）
+> English: [usage.md](usage.md)
 
 ## 1. 快速上手（今天就能跑）
 
