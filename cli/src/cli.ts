@@ -22,7 +22,8 @@ import { resolveWorkspace } from './workspace.js';
 
 function usage(): void {
   console.log(`BuildingOS CLI — the tool; a tenant workspace (a dir with .buildingos/) is the user's project.
-  buildingos init <dir>                              interactive first-boot wizard (language → engine → model → credentials → git)
+  buildingos init [dir]                              first-boot wizard (language → engine → model → credentials → git)
+                                                     [dir] optional: default = current directory (git-init style)
   buildingos web [--port N]                          start the web console (the interaction surface)
   buildingos validate [root]                         load + lint a tenant (normalizer)
   buildingos compile --engine <dsh|codex> [root]     render the engine view (--out <dir>)
@@ -113,18 +114,18 @@ async function cmdConformance(root: string, argv: string[]): Promise<number> {
   return failed === 0 ? 0 : 1;
 }
 
+/** init target: with [dir] → ./<dir>; without → current directory (git-init style). */
+export function initTarget(argv: string[]): string {
+  return argv[0] ? path.resolve(argv[0]) : process.cwd();
+}
+
 export async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
     case 'init': {
-      const dir = rest[0];
-      if (!dir) {
-        usage();
-        return 2;
-      }
-      // First-boot wizard (docs/runtime-bootstrap.md §2): language first, then
-      // engine → model → credentials → git → scaffold → validate → runtime.
-      const result = await runWizard(path.resolve(dir), createConsoleIO());
+      // Scaffold where the user is. The tool-repo guard in initTenant refuses
+      // targets containing pnpm-workspace.yaml.
+      const result = await runWizard(initTarget(rest), createConsoleIO());
       return result.ok ? 0 : 1;
     }
     case 'web': {

@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runWizard } from '@buildingos/bootstrap';
 import type { WizardIO } from '@buildingos/bootstrap';
-import { main } from '../src/cli.js';
+import { initTarget, main } from '../src/cli.js';
 
 function scriptedIO(): WizardIO {
   const script = [
@@ -48,6 +48,11 @@ describe('buildingos CLI', () => {
 
   it('wizard scaffolded a tenant repository', async () => {
     await expect(readFile(path.join(dir, '.buildingos', 'configs', 'runtime.yaml'), 'utf8')).resolves.toContain('engine: dsh');
+  });
+
+  it('init target: [dir] resolves to ./<dir>, no arg uses cwd (git-init style)', () => {
+    expect(initTarget(['my-tenant'])).toBe(path.resolve('my-tenant'));
+    expect(initTarget([])).toBe(process.cwd());
   });
 
   it('validate passes on the scaffolded tenant (positional root)', async () => {

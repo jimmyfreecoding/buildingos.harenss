@@ -9,18 +9,22 @@
 git clone <your-buildingos-repo> && cd buildingos.harenss
 pnpm install          # workspace: normalizer / adapters / bootstrap / conformance / web / cli
 pnpm build            # required once — the bin points at dist/cli.js
-pnpm test             # 55 tests — everything green
+pnpm test             # 56 tests — everything green
+
+# Install the tool globally (once), then use it anywhere:
+pnpm setup                            # one-time: add pnpm's global bin to PATH
+cd cli && pnpm link --global           # one-time: `buildingos` becomes available everywhere
 ```
 
-Invoke the CLI (three ways):
+Then create a project wherever you are (the tool stays separate from your projects):
 
 ```bash
-pnpm buildingos <cmd>        # root helper script — no PATH configuration needed (recommended)
-pnpm exec buildingos <cmd>   # workspace bin
-# or, for a bare `buildingos` anywhere: pnpm link --global @buildingos/cli
+cd /where/you/want/projects
+buildingos init my-tenant              # or: mkdir p && cd p && buildingos init (git-init style)
+cd my-tenant
 ```
 
-Example (same as below, with the helper): `pnpm buildingos init my-tenant`
+(If you prefer not to link globally: `pnpm buildingos <cmd>` from the tool repo also works.)
 
 ```bash
 # Scaffold a tenant repository — interactive first-boot wizard:

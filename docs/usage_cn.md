@@ -9,18 +9,22 @@
 git clone <你的-buildingos-仓库> && cd buildingos.harenss
 pnpm install          # 工作区：normalizer / adapters / bootstrap / conformance / web / cli
 pnpm build            # 必须一次——bin 指向 dist/cli.js
-pnpm test             # 55 个测试——全绿
+pnpm test             # 56 个测试——全绿
+
+# 全局安装工具（一次），之后随处可用：
+pnpm setup                            # 一次性：把 pnpm 全局 bin 加入 PATH
+cd cli && pnpm link --global           # 一次性：`buildingos` 全局可用
 ```
 
-调用 CLI（三种方式）：
+然后在你想建项目的地方直接创建（工具与项目分离）：
 
 ```bash
-pnpm buildingos <cmd>        # 根辅助脚本——无需配置 PATH（推荐）
-pnpm exec buildingos <cmd>   # 工作区 bin
-# 或想在任何目录用裸 buildingos：pnpm link --global @buildingos/cli
+cd /你想建项目的地方
+buildingos init my-tenant              # 或：mkdir p && cd p && buildingos init（git-init 风格）
+cd my-tenant
 ```
 
-示例（下面命令同理，用辅助脚本）：`pnpm buildingos init my-tenant`
+（不想全局链接也可以用工具仓库里的 `pnpm buildingos <cmd>`。）
 
 ```bash
 # 脚手架一个租户仓库 —— 交互式首启向导：
