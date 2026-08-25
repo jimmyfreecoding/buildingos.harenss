@@ -314,7 +314,7 @@ One customer = one private repository. Each tenant's AI has its own constitution
 
 ## Quick Start
 
-Full guide: [docs/usage.md](docs/usage.md) · 中文：[docs/usage_cn.md](docs/usage_cn.md)
+Full guide: [docs/usage.md](docs/usage.md) · 中文：[docs/usage_cn.md](docs/usage_cn.md) · Hands-on walkthrough: [docs/hands-on.md](docs/hands-on.md)
 
 ```bash
 git clone <repo> && cd buildingos.harenss

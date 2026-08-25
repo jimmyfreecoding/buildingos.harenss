@@ -360,7 +360,7 @@ runtime:
 
 ## 快速开始
 
-完整指南：[docs/usage_cn.md](docs/usage_cn.md) · English: [docs/usage.md](docs/usage.md)
+完整指南：[docs/usage_cn.md](docs/usage_cn.md) · English: [docs/usage.md](docs/usage.md) · 亲手体验： [docs/hands-on_cn.md](docs/hands-on_cn.md)
 
 ```bash
 git clone <仓库> && cd buildingos.harenss
