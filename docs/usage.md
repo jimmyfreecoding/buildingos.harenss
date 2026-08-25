@@ -7,13 +7,13 @@
 
 ```bash
 git clone <your-buildingos-repo> && cd buildingos.harenss
-pnpm install          # workspace: normalizer / adapters / bootstrap / conformance / web / cli
-pnpm build            # required once — the bin points at dist/cli.js
-pnpm test             # 56 tests — everything green
+pnpm install          # workspace: normalizer / adapters / bootstrap / conformance / cli
+pnpm build            # required once — the bin points at dist/cli.bundle.cjs
 
 # Install the tool globally (once), then use it anywhere:
 pnpm setup                            # one-time: add pnpm's global bin to PATH
-cd cli && pnpm link --global           # one-time: `buildingos` becomes available everywhere
+cd cli && pnpm pack                   # one-time: package the self-contained bundle
+pnpm install -g ./buildingos-cli-0.1.0.tgz   # one-time: `buildingos` becomes available everywhere
 ```
 
 Then create a project wherever you are (the tool stays separate from your projects):
@@ -47,11 +47,6 @@ buildingos compile --engine codex my-tenant
 
 # Conformance: compile output vs. the golden engine-views baseline
 buildingos conformance my-tenant
-
-# Or open the web console — the interaction surface (product decision):
-# wizard / validate / compile / conformance panels in the browser
-buildingos web
-# → http://127.0.0.1:4173
 ```
 
 ### What a tenant looks like after `init`
@@ -91,7 +86,6 @@ cd my-tenant && buildingos validate          # upward search finds the marker
 | Command | What it does |
 |---|---|
 | `buildingos init <dir>` | Scaffold a tenant repository (starter rules/skills/prompts/configs/knowledge + .gitignore) |
-| `buildingos web [--port N]` | **The interaction surface** (product decision): open the console SPA — wizard / validate / compile / conformance panels |
 | `buildingos validate [root]` | Load + lint a tenant: schema checks, `ORDER_DUPLICATE` (D20), `DEP_UNRESOLVED` (D3), permissions no-hand-write (D14); exit non-zero on errors |
 | `buildingos compile --engine dsh\|codex [root] [--out <dir>]` | Render the engine view from TenantDocs; writes files into `engine-views/<engine>` by default |
 | `buildingos conformance [root]` | G1 compile-parity against the golden baseline (needs `engine-views/` first); G2–G4 engine-gated, skipped |
@@ -130,7 +124,7 @@ buildingos serve --prod    # production companion (M5.5): same runtime, ops post
 
 | Stage | Milestone | Status |
 |---|---|---|
-| `normalizer` / adapters / conformance / minimal CLI | M1 | ✅ implemented, 35 tests |
+| `normalizer` / adapters / conformance / minimal CLI | M1 | ✅ implemented, 51 tests |
 | First-boot wizard (`init` steps 0–5: language/engine/model/credentials/git/scaffold) | M1.5 | ✅ implemented — [runtime-bootstrap.md](runtime-bootstrap.md) §2 |
 | Runtime CLI entry (step 7: `buildingos dev` / `serve --prod`) | M1.5/M5.5 | 📋 pending |
 | Local Docker dev environment (Turnkey compose: runtime + PG + bundled services) | M1.5 | 📋 designed — README roadmap |
@@ -143,7 +137,7 @@ Until the runtime lands, everything above the dotted line — document model, sc
 
 ## 5. Testing the current state
 
-One command verifies everything (48 unit/acceptance tests + the full CLI E2E loop):
+One command verifies everything (51 unit/acceptance tests + the full CLI E2E loop):
 
 ```bash
 pnpm verify        # typecheck → build → test → e2e demo
@@ -157,13 +151,14 @@ pnpm --filter @buildingos/cli demo  # init(wizard) → validate → compile dsh/
 | `@buildingos/normalizer` | 15 | frontmatter extraction (warn-and-skip), five-family loaders, normalization (kebab→camel, defaults, persona merge D10, permission derivation D6), set-level lint (`ORDER_DUPLICATE` D20, `DEP_UNRESOLVED` D3, `PERMISSIONS_HAND_WRITTEN` D14, path checks D5/D19), contract gate, crafted negative tenant |
 | `@buildingos/adapter-dsh` | 6 | compile() renders the DSH view; golden-output parity (frontmatter semantics + body), `metadata.x-buildingos` lossless carry (D2/D4), system-prompt sections by order (D20), run() pending bridge |
 | `@buildingos/adapter-codex` | 6 | compile() renders the Codex view; golden-output parity (SKILL.md parser-consumed fields, openai.yaml semantic match, AGENTS.md order, config.toml D13) |
+| `@buildingos/bootstrap` | 6 | `initTenant` (scaffold + tool-repo guard + .gitignore + .env/.env.example D21), wizard (language first, engine/model/credentials/git, ZH/EN l10n) |
 | `@buildingos/conformance` | 3 | G1 compile-parity against golden engine-views (both engines), tenant-error surfacing, G2–G4 engine-gated skeletons |
-| `@buildingos/cli` | 18 | first-boot wizard (language first, engine/model/credentials/git, `.env` D21, `.env.example`), workspace resolution (flag/env/upward-search/error), validate/compile/conformance commands |
+| `@buildingos/cli` | 15 | first-boot wizard (language first, engine/model/credentials/git, `.env` D21, `.env.example`), workspace resolution (flag/env/upward-search/error), validate/compile/conformance commands |
 
 **How to add a test**: put a `*.test.ts` in the package's `tests/` (fixtures: `examples/` for acceptance, crafted temp dirs for negative cases), then `pnpm --filter <pkg> test`. The golden engine-views are the byte/semantic baseline for compile (conformance G1).
 
 ## 6. Honest status
 
 - **Works today**: `init` / `validate` / `compile` / `conformance` — the full document→engine-view pipeline with machine-verified golden outputs.
-- **Pending**: the `run()` event bridges (DSH: ACP vs. in-process cordis; Codex: `codex mcp-server` validation — adapter-contract §9), the runtime CLI wizard, Docker/K8s packaging (M1.5), Git webhooks (M2), dynamic UI (M3), project wizard (M5), production companion (M5.5).
+- **Pending**: the `run()` event bridges (DSH: ACP vs. in-process cordis; Codex: `codex mcp-server` validation — adapter-contract §9), the dev runtime (`buildingos dev` + docker compose), Docker/K8s packaging (M1.5), Git webhooks (M2), dynamic UI (M3), project wizard (M5), production companion (M5.5).
 - **Secrets**: model/Git tokens go into `.env` (gitignored) — never into the repository (D21).

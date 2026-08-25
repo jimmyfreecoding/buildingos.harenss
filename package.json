@@ -8,8 +8,7 @@
     "typecheck": "pnpm -r typecheck",
     "check": "pnpm -r build && pnpm -r typecheck && pnpm -r test",
     "verify": "pnpm check && pnpm --filter @buildingos/cli demo",
-    "buildingos": "pnpm exec buildingos",
-    "web": "pnpm exec buildingos web"
+    "buildingos": "pnpm exec buildingos"
   },
   "dependencies": {
     "@buildingos/cli": "workspace:*"

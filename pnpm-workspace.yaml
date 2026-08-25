@@ -3,7 +3,6 @@ packages:
   - adapters/*
   - bootstrap
   - conformance
-  - web
   - cli
 allowBuilds:
   esbuild: true

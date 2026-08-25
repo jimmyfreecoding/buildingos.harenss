@@ -360,40 +360,35 @@ runtime:
 
 ## 快速开始
 
-> **TODO**：MVP 就绪后填充本节。目前没有任何可运行内容。
-
-### 前置条件
-
-- [ ] TODO：一个现有 Harness 引擎（如 DeepSeek Harness / DSH、Codex harness）
-- [ ] TODO：确定运行时要求（Node / Go / Docker…）
-
-### 安装
+完整指南：[docs/usage_cn.md](docs/usage_cn.md) · English: [docs/usage.md](docs/usage.md)
 
 ```bash
-# TODO：BuildingOS runtime 发布后的安装命令
+git clone <仓库> && cd buildingos.harenss
+pnpm install          # 工作区：normalizer / adapters / bootstrap / conformance / cli
+pnpm build            # 必须一次——bin 指向 dist/cli.bundle.cjs
+pnpm test             # 51 个测试
+
+# 全局安装工具（一次），之后随处可用：
+pnpm setup                                  # 一次性：把 pnpm 全局 bin 加入 PATH
+cd cli && pnpm pack && cd ..                # 一次性：打包自包含 bundle
+pnpm install -g ./cli/buildingos-cli-0.1.0.tgz
+
+buildingos init my-tenant        # 脚手架一个租户仓库（文档即代码）
+buildingos validate my-tenant    # 加载 + lint（schema 校验、D20/D3/D14 规则）
+buildingos compile --engine dsh my-tenant    # 渲染引擎视图
+buildingos conformance my-tenant            # 编译产物 vs golden 基线
 ```
-
-### 运行你的第一个 Agent
-
-```bash
-# TODO：初始化一个租户仓库，并对着你的 Harness 引擎启动 runtime
-```
-
-### 创建你的第一个 Skill
-
-- [ ] TODO：脚手架生成 `.buildingos/skills/hello.md`
-- [ ] TODO：打开内置 admin/dashboard，看到你的第一个原型
 
 ---
 
 ## 项目状态与路线图
 
-**当前状态：Concept 阶段。** README 描述愿景与目标架构，代码与 Schema 正在设计。
+**当前状态：M1 进行中。** M0 设计基线（契约、Schema、示例）已提交；M1 流水线（normalizer → adapters → conformance → CLI）已实现并通过测试。
 
 | 里程碑 | 范围 | 状态 |
 |---|---|---|
-| **M0** | `.buildingos/` Schema 规范（rules / skills / prompts / configs） | 讨论中 |
-| **M1** | Harness 适配器：接入 DSH + Codex 作为可插拔引擎，含**已收录引擎的自动版本跟踪**——上游 release hook → 自动构建/conformance（零人工维护）；收录新引擎是社区评审的人工决策（M4+） | 计划中 |
+| **M0** | `.buildingos/` Schema 规范（rules / skills / prompts / configs）+ 决策备忘录 | ✅ 已定 |
+| **M1** | Harness 适配器：接入 DSH + Codex 作为可插拔引擎，含**已收录引擎的自动版本跟踪**——上游 release hook → 自动构建/conformance（零人工维护）；收录新引擎是社区评审的人工决策（M4+） | 进行中（实现已落地） |
 | **M1.5** | Turnkey 交付：Docker Compose + Helm chart，捆绑 runtime、适配器、前端与配套服务栈（PostgreSQL / TDengine / MQTT broker）——一条命令跑起可用原型 | 计划中 |
 | **M2** | Git 集成：webhook 驱动热加载、PR CI 检查 | 计划中 |
 | **M3** | UI Skill 与编码规则包（"顶级 UI"即文档）+ 动态 UI 生成——开箱出原型，零前端代码 | 计划中 |

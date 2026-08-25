@@ -1,7 +1,7 @@
 # BuildingOS 开发环境（本地 Docker 开发环境设计，M1.5 ②）
 
 > 目标体验（用户需求）：`buildingos init my-tenant` → `cd my-tenant` → `docker compose up` →
-> 浏览器打开 Web 控制台 → **直接开始开发**（改 know-how、看校验/编译/Conformance、将来直接与 AI 对话）。
+> 在容器里直接开始开发（改 know-how、跑 validate/compile/Conformance、将来直接与 AI 对话）。
 > English: [dev-environment.md](dev-environment.md)
 
 ## 1. 目标：租户目录自包含、一键起开发环境
@@ -15,10 +15,13 @@ my-tenant/                      ← init 生成（向导第 5 步的产物扩展
 └── .gitignore
 
 cd my-tenant && docker compose up
-# → http://127.0.0.1:4173  Web 控制台（向导/校验/编译/Conformance 面板）
-# → postgres:5432          状态库（会话/记忆，核心栈）
-# → （可选）tdengine/mqtt   IoT 场景栈
+# → buildingos-runtime:4000   dev runtime CLI（build/dev/validate/compile/conformance）
+# → postgres:5432            状态库（会话/记忆，核心栈）
+# → （可选）tdengine/mqtt     IoT 场景栈
 ```
+
+交互面是 **CLI**（产品决定：无 web 端）：进入容器后 `buildingos validate/compile/conformance` 即用；
+将来的 `buildingos dev`（dev runtime）提供 hot-reload + 引擎 run() 对话入口。
 
 ## 2. 服务拓扑（dev profile）
 
@@ -27,7 +30,7 @@ cd my-tenant && docker compose up
 │  buildingos-runtime（node 容器）                           │
 │    ├─ 挂载 工具源码（buildingos.harenss，dev 模式热改即生效）│
 │    ├─ 挂载 租户目录（/workspace = my-tenant）              │
-│    ├─ 入口：buildingos web --port 4173（Web 控制台）       │
+│    ├─ 入口：buildingos（CLI；交互面）                      │
 │    └─ 读 .env（MODEL_TOKEN/GIT_TOKEN，D21 秘密不进 Git）   │
 │  postgres（状态库：会话/记忆，核心栈默认）                  │
 │  tdengine + mqtt（IoT 场景栈，按模板启用）                  │
@@ -38,23 +41,24 @@ cd my-tenant && docker compose up
 
 | 能力 | 状态 |
 |---|---|
-| Web 控制台（向导/校验/编译/Conformance 面板） | ✅ 已有（`@buildingos/web`）——容器里就能跑 |
-| 租户文档管线（normalizer → adapters → golden 比对） | ✅ 已有 |
+| 租户文档管线（normalizer → adapters → golden 比对） | ✅ 已有——CLI：`buildingos validate/compile/conformance` |
+| 首启向导（`buildingos init`，语言/引擎/模型/凭证/git） | ✅ 已有（M1.5 ①） |
+| 全局安装（`pnpm install -g`，自包含 bundle） | ✅ 已有 |
 | **在租户目录 `docker compose up` 一键起环境** | 📋 本设计，待实现 |
 | **与 AI 对话（引擎 run() 桥：DSH/Codex）** | 📋 run() 桥待实现——这是"直接开发"体验的最后一块 |
-| 热加载（改 know-how → 控制台自动刷新） | 📋 后置（E） |
+| 热加载（改 know-how → 自动 re-validate/compile） | 📋 后置（E） |
 
-**结论**：容器环境可以先落地（Web 控制台 + PG + 文档管线全在容器里跑）；AI 对话依赖 run() 桥（M1.5 ③），是补全体验的下一环，不是本设计的前置。
+**结论**：容器环境可以先落地（CLI + PG + 文档管线全在容器里跑）；AI 对话依赖 run() 桥（M1.5 ③），是补全体验的下一环，不是本设计的前置。
 
 ## 4. 实施拆分（按顺序）
 
 | # | 交付物 | 内容 |
 |---|---|---|
 | A | `deploy/Dockerfile` + `deploy/docker-compose.dev.yml` | buildingos-runtime（node）镜像定义 + postgres 服务；dev 模式挂载工具源码与租户目录 |
-| B | runtime 容器入口 | 启动 `buildingos web`，绑定租户挂载（`--workspace /workspace`）；可选 healthcheck |
+| B | runtime 容器入口 | 容器内 `buildingos` CLI 可用（全局安装的 bundle 或源码链接）；绑定租户挂载（`/workspace`） |
 | C | init 生成租户 `docker-compose.yml` + `.env` 扩展 | 向导第 5 步同时写入 compose（引用工具仓库路径或镜像）+ PG_PASSWORD 等 |
-| D | `buildingos dev` 命令 | 等于 `docker compose up`（在租户工作区检测 compose）+ 打开浏览器 |
-| E | （后置）热加载 + 引擎 run() 桥 | watch 租户文档 → 自动 validate/compile → 控制台刷新；引擎对话（M1.5 ③） |
+| D | `buildingos dev` 命令 | 等于 `docker compose up`（在租户工作区检测 compose） |
+| E | （后置）热加载 + 引擎 run() 桥 | watch 租户文档 → 自动 validate/compile；引擎对话（M1.5 ③） |
 
 ## 5. 待确认决策点
 

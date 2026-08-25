@@ -7,13 +7,13 @@
 
 ```bash
 git clone <你的-buildingos-仓库> && cd buildingos.harenss
-pnpm install          # 工作区：normalizer / adapters / bootstrap / conformance / web / cli
-pnpm build            # 必须一次——bin 指向 dist/cli.js
-pnpm test             # 56 个测试——全绿
+pnpm install          # 工作区：normalizer / adapters / bootstrap / conformance / cli
+pnpm build            # 必须一次——bin 指向 dist/cli.bundle.cjs
 
 # 全局安装工具（一次），之后随处可用：
 pnpm setup                            # 一次性：把 pnpm 全局 bin 加入 PATH
-cd cli && pnpm link --global           # 一次性：`buildingos` 全局可用
+cd cli && pnpm pack                   # 一次性：打包自包含 bundle
+pnpm install -g ./buildingos-cli-0.1.0.tgz   # 一次性：`buildingos` 全局可用
 ```
 
 然后在你想建项目的地方直接创建（工具与项目分离）：
@@ -47,11 +47,6 @@ buildingos compile --engine codex my-tenant
 
 # Conformance：编译产物 vs golden 引擎视图基线
 buildingos conformance my-tenant
-
-# 或打开 Web 控制台 —— 交互面（产品决定）：
-# 浏览器里的 向导 / 校验 / 编译 / Conformance 面板
-buildingos web
-# → http://127.0.0.1:4173
 ```
 
 ### `init` 之后租户长什么样
@@ -89,7 +84,6 @@ cd my-tenant && buildingos validate          # 向上搜索命中标记
 | 命令 | 作用 |
 |---|---|
 | `buildingos init <dir>` | 脚手架租户仓库（starter rules/skills/prompts/configs/knowledge + .gitignore） |
-| `buildingos web [--port N]` | **交互面**（产品决定）：打开控制台 SPA——向导 / 校验 / 编译 / Conformance 面板 |
 | `buildingos validate [root]` | 加载 + lint 租户：schema 校验、`ORDER_DUPLICATE`（D20）、`DEP_UNRESOLVED`（D3）、权限禁手写（D14）；有 error 时退出码非零 |
 | `buildingos compile --engine dsh\|codex [root] [--out <dir>]` | 从 TenantDocs 渲染引擎视图；默认写入 `engine-views/<engine>` |
 | `buildingos conformance [root]` | G1 编译黄金比对（需先有 `engine-views/`）；G2–G4 引擎门控，跳过 |
@@ -128,7 +122,7 @@ buildingos serve --prod    # 生产伴生（M5.5）：同一 runtime 的运维�
 
 | 阶段 | 里程碑 | 状态 |
 |---|---|---|
-| normalizer / 适配器 / conformance / 最小 CLI | M1 | ✅ 已实现，35 测试 |
+| normalizer / 适配器 / conformance / 最小 CLI | M1 | ✅ 已实现，51 测试 |
 | 首启向导（init 第 0–5 步：语言/引擎/模型/凭证/git/脚手架） | M1.5 | ✅ 已实现——[runtime-bootstrap.md](runtime-bootstrap.md) §2 |
 | Runtime CLI 入口（第 7 步：`buildingos dev` / `serve --prod`） | M1.5/M5.5 | 📋 待实现 |
 | 本地 Docker 开发环境（Turnkey compose：runtime + PG + 捆绑服务） | M1.5 | 📋 已设计——README 路线图 |
@@ -141,7 +135,7 @@ buildingos serve --prod    # 生产伴生（M5.5）：同一 runtime 的运维�
 
 ## 5. 测试当前状态
 
-一条命令验证全部（48 个单元/验收测试 + 完整 CLI 端到端流程）：
+一条命令验证全部（51 个单元/验收测试 + 完整 CLI 端到端流程）：
 
 ```bash
 pnpm verify        # typecheck → build → test → e2e demo
@@ -155,13 +149,14 @@ pnpm --filter @buildingos/cli demo  # init(向导) → validate → compile dsh/
 | `@buildingos/normalizer` | 15 | frontmatter 提取（warn-and-skip）、五家族 loader、规范化（kebab→camel、默认值、人格合并 D10、权限派生 D6）、集合级 lint（`ORDER_DUPLICATE` D20、`DEP_UNRESOLVED` D3、`PERMISSIONS_HAND_WRITTEN` D14、路径检查 D5/D19）、输出门禁、构造的负面租户 |
 | `@buildingos/adapter-dsh` | 6 | compile() 渲染 DSH 视图；golden 黄金比对（frontmatter 语义+正文）、`metadata.x-buildingos` 无损携带（D2/D4）、system-prompt sections 按 order（D20）、run() 待桥 |
 | `@buildingos/adapter-codex` | 6 | compile() 渲染 Codex 视图；golden 黄金比对（SKILL.md parser 消费字段、openai.yaml 语义、AGENTS.md 顺序、config.toml D13） |
+| `@buildingos/bootstrap` | 6 | `initTenant`（脚手架 + 工具仓库守卫 + .gitignore + .env/.env.example D21）、向导（语言优先、引擎/模型/凭证/git、中英双语） |
 | `@buildingos/conformance` | 3 | G1 编译黄金比对（双引擎）、租户错误上抛、G2–G4 引擎门控骨架 |
-| `@buildingos/cli` | 18 | 首启向导（语言优先、引擎/模型/凭证/git、`.env` D21、`.env.example`）、workspace 解析（flag/env/向上搜索/报错）、validate/compile/conformance 命令 |
+| `@buildingos/cli` | 15 | 首启向导（语言优先、引擎/模型/凭证/git、`.env` D21、`.env.example`）、workspace 解析（flag/env/向上搜索/报错）、validate/compile/conformance 命令 |
 
 **如何加测试**：在包的 `tests/` 放 `*.test.ts`（夹具：`examples/` 做验收用例，临时构造目录做负面用例），然后 `pnpm --filter <包名> test`。golden engine-views 是 compile 的字节/语义基线（conformance G1）。
 
 ## 6. 诚实状态
 
 - **今天可用**：`init` / `validate` / `compile` / `conformance`——完整的"文档 → 引擎视图"流水线，golden 产物全程机器验证。
-- **待实现**：`run()` 事件桥（DSH：ACP vs 进程内 cordis；Codex：`codex mcp-server` 验证——adapter-contract §9）、runtime CLI 向导、Docker/K8s 打包（M1.5）、Git webhook（M2）、动态 UI（M3）、项目向导（M5）、生产伴生（M5.5）。
+- **待实现**：`run()` 事件桥（DSH：ACP vs 进程内 cordis；Codex：`codex mcp-server` 验证——adapter-contract §9）、dev runtime（`buildingos dev` + docker compose）、Docker/K8s 打包（M1.5）、Git webhook（M2）、动态 UI（M3）、项目向导（M5）、生产伴生（M5.5）。
 - **秘密**：模型 / Git token 进 `.env`（gitignored）——绝不进仓库（D21）。

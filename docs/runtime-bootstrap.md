@@ -91,7 +91,7 @@ buildingos init (this design)
 |---|---|---|
 | b1 | Configuration layering | **Three-layer split (D21)**: bootstrap / document (Git) / secret (env, never in Git); keys never entering the repository is the security baseline |
 | b2 | Secret storage | **M1 env injection + M2 secret store** (the env channel stays; only the source changes) |
-| b3 | Bootstrap interaction form | **Web-first wizard (product decision, 2026-10)**: the console SPA is the interaction surface (`buildingos web` — wizard / validate / compile / conformance panels); the CLI remains the programmatic / library surface |
+| b3 | Bootstrap interaction form | **CLI wizard in M1** (the interaction surface is the terminal: `buildingos init` — language first, then engine / model / credentials / git); admin-web bootstrap UI is deferred to M3 built-in front-ends |
 | b4 | dev/prod relationship | **One runtime, two postures** (dev runtime / prod companion), sharing documents and contracts |
 
 ## 8. Open items

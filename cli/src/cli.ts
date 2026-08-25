@@ -10,21 +10,20 @@
  * lands with the runtime CLI (M1.5); these four commands exercise everything that runs today.
  */
 import { mkdir, writeFile, stat } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { codexAdapter } from '@buildingos/adapter-codex';
 import { dshAdapter } from '@buildingos/adapter-dsh';
 import { runConformance } from '@buildingos/conformance';
 import { createConsoleIO, runWizard } from '@buildingos/bootstrap';
 import { loadTenantDocs } from '@buildingos/normalizer';
-import { startServer } from '@buildingos/web';
 import { resolveWorkspace } from './workspace.js';
 
 function usage(): void {
   console.log(`BuildingOS CLI — the tool; a tenant workspace (a dir with .buildingos/) is the user's project.
   buildingos init [dir]                              first-boot wizard (language → engine → model → credentials → git)
                                                      [dir] optional: default = current directory (git-init style)
-  buildingos web [--port N]                          start the web console (the interaction surface)
   buildingos validate [root]                         load + lint a tenant (normalizer)
   buildingos compile --engine <dsh|codex> [root]     render the engine view (--out <dir>)
   buildingos conformance [root]                      conformance G1 report (needs a golden baseline)
@@ -129,11 +128,9 @@ export async function main(argv: string[]): Promise<number> {
       return result.ok ? 0 : 1;
     }
     case 'web': {
-      const port = Number(arg(rest, '--port') ?? process.env.PORT ?? 4173);
-      const server = await startServer({ port });
-      console.log(`BuildingOS web console: http://127.0.0.1:${port}  (Ctrl+C to stop)`);
-      await new Promise<void>(() => {}); // keep the process alive; the server keeps listening
-      return server ? 0 : 1;
+      // Removed (product decision): the interaction surface is the CLI; no web console.
+      console.error('web console removed — use the CLI commands (init/validate/compile/conformance)');
+      return 2;
     }
     case 'validate': {
       const resolved = resolveRoot(arg(rest, '--workspace') ?? arg(rest, '-w'), rest[0]);
@@ -171,6 +168,22 @@ export async function main(argv: string[]): Promise<number> {
   }
 }
 
-if (process.argv[1]?.endsWith('cli.js') || process.argv[1]?.endsWith('cli.ts')) {
+// Run as the CLI entry when this module is the executed file — robust for the
+// ESM tsc build (dist/cli.js, via import.meta.url), the CJS esbuild bundle
+// (dist/cli.bundle.cjs, via __filename), and pnpm global installs where the
+// global dir is a symlink/junction into the store (compare realpaths).
+function isCliEntry(): boolean {
+  const arg = process.argv[1];
+  if (!arg) return false;
+  const self =
+    typeof __filename === 'string' ? __filename : fileURLToPath(import.meta.url);
+  try {
+    return realpathSync(self) === realpathSync(arg);
+  } catch {
+    return path.resolve(self) === path.resolve(arg);
+  }
+}
+
+if (isCliEntry()) {
   main(process.argv.slice(2)).then((code) => process.exit(code));
 }
