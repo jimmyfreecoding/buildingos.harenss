@@ -1,6 +1,6 @@
 # BuildingOS Contract Philosophy
 
-> A decision memorandum for the team: all **21 decisions** from the M0 phase, explained in plain language.
+> A decision memorandum for the team: all **22 decisions** from the M0 phase, explained in plain language.
 > This is not a technical specification — it records *why* we chose what we chose. For details, see the [Decision Index](#11-decision-index).
 
 ---
@@ -13,7 +13,7 @@
 
 ---
 
-## 1. What are these 21 decisions?
+## 1. What are these 22 decisions?
 
 During M0 we fixed the shape of every document that lives in a tenant repository — four document families:
 
@@ -22,7 +22,7 @@ During M0 we fixed the shape of every document that lives in a tenant repository
 | Skills | How to get work done | 5 |
 | Rules | What must never be done | 4 |
 | Prompts | The voice to work with | 3 |
-| Configs | The tools and parameters to work with | 4 |
+| Configs | The tools and parameters to work with | 5 |
 | Tenancy model | How data is isolated, skills layered, world knowledge stored | 4 |
 | Assembly ordering | How documents across families are ordered | 1 |
 
@@ -81,7 +81,7 @@ During M0 we fixed the shape of every document that lives in a tenant repository
 
 ---
 
-## 5. Runtime parameters (4 decisions)
+## 5. Runtime parameters (5 decisions)
 
 **D13. One shared vocabulary for sandbox and approval.** Read-only / workspace-write / danger-full-access; never / on-request / unless-trusted.
 > Why: the same names as Codex (one less translation layer), mappable to DSH knobs, and "read-only by default" is precisely the product position.
@@ -96,6 +96,10 @@ During M0 we fixed the shape of every document that lives in a tenant repository
 **D21. Configuration is split into three layers; keys never enter the repository.** Bootstrap configuration (local engine/model selection and credential entry) → document configuration (`runtime.yaml` in Git: engine, model, parameters) → secret configuration (tokens/credentials, injected via environment, **never in Git**).
 > Why: writing model tokens and Git credentials into `runtime.yaml` is hanging the keys on the front door — visible in PR reviews, permanent in history, and fatal to the governance model (the same principle as D14: no exceptions).
 > In short: configuration may live in the repository; keys never do.
+
+**D22. Engine security baseline — engines never expose non-loopback ports; BuildingOS is the only authenticated entry.** An engine container (dsh / codex harness) must **never publish a management/API port to a non-loopback interface** (`0.0.0.0`, a public port mapping, or a reverse proxy without a strict Host/`Host`-whitelist). Engine endpoints stay on the compose internal network or bind `127.0.0.1`; the only way in is the BuildingOS API surface, which carries its own authentication (token → mTLS / IP allowlist as the surface grows). Anything that makes the engine reach external addresses (`llm.discoverModels`-style discovery, SSRF-prone calls) must restrict the target address range. Trusting loopback alone is never a fence (QVD-2026-57410: dsh's `/api` was guarded by a forgeable `Host` header, leading to unauth RCE, CVSS 9.8).
+> Why: harnesses hold high-privilege tools (bash, filesystem, code execution) and their default threat model is "a local tool on my laptop". Once such a harness runs in a container, in CI, or on a server, that local trust model is bare on the network. The fence must live at the BuildingOS boundary — stable across engines — not inside each engine's own conventions.
+> In short: engines work, BuildingOS guards; no engine port crosses the fence, and no unauthenticated request reaches an engine.
 
 ---
 
@@ -167,5 +171,6 @@ During M0 we fixed the shape of every document that lives in a tenant repository
 | `schemas/configs.schema.md` | §8 (D13–D15) |
 | `docs/tenancy-model.md` | Tenancy model and data boundaries (D16–D19) |
 | `docs/api-contract.md` | Appendix A (engine research), §4.6 (tool governance) |
+| Deployment & engine containers | D22 engine security baseline (compose/deploy docs, engine images) |
 
 > 中文版：见 [contract-philosophy_cn.md](contract-philosophy_cn.md)。
