@@ -1,0 +1,68 @@
+# netops profile 用户层 —— DSH 侧的唯一改动面
+#
+# 位置：$DSH_HOME/profiles/netops/cordis.patch.yml
+# 校验：dsh --profile netops --dump-config
+#
+# 层序：bundle 层 → 本文件 → $DSH_HOME/cordis.patch.yml → --patch 叠加
+#
+# M0 前半段：两个 @netops/* 行先注释掉，用现有包跑通基础 harness。
+# M0 后半段：工具注册器与 netops 工具包建好后打开。
+
+# ── 1. 只读探索所需的执行能力 ────────────────────────────────
+- id: tools
+  config:
+    # 程序化工具调用：模型写 Python 代码，在代码里直接调工具
+    mode: ptc
+
+- id: code-runtime
+  name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+
+- insert:
+    - id: code-runtime-python
+      name: '@deepseek-ai/dsh-experimental-code-runtime-python'
+
+# ── 2. 模型 ──────────────────────────────────────────────────
+# 便宜模型做汇总/叙述，强模型做根因与造工具；
+# 任务级路由在 harness/service 里做，这里只定默认值。
+- id: agent-default-model
+  config:
+    provider: deepseek-official
+    model: deepseek-chat
+
+# ── 3. netops 能力 ───────────────────────────────────────────
+- insert:
+    # 扫 toolbox/ 与 adapters/，把每个 .py 注册成工具（见 CONTRACTS.md B 节）
+    - id: netops-toolbox
+      name: '@netops/dsh-toolbox-registrar'
+      config:
+        dirs:
+          - /opt/netops/harness/toolbox
+          - /opt/netops/harness/adapters
+        python: python3
+        timeoutMs: 30000
+        maxOutputBytes: 65536
+
+    # 内置只读工具：把产品能力以「领域工具」而非裸命令暴露给模型
+    - id: netops-tools
+      name: '@netops/dsh-netops-tools'
+      config:
+        apiUrl: http://127.0.0.1:8080        # host 网络，走宿主端口
+        tdUrl: http://127.0.0.1:6041
+        pgDsnRef: NETOPS_PG_DSN              # 引用名，不是明文
+        tools:
+          - probe_snapshot        # 子网一段时间的质量快照
+          - device_detail         # 设备卡片（身份/位置/链路/服务/治理级别）
+          - device_config         # 归一化配置（L2 以上）
+          - cctv_health           # 码率稳定性/丢帧/体验分
+          - wifi_environment      # 信道利用率/噪声/关联表
+          - topology_query        # 邻接与路径
+          - findings_query        # 历史 finding 与证据
+
+# ── 4. persona ───────────────────────────────────────────────
+- id: system-prompt
+  config:
+    personaSuffix: >-
+      你在客户生产网络上做只读探索与诊断。可以自由使用工具、自由生成 Python 工具
+      （写入 /opt/netops/harness/toolbox/）、自由发送广播与扫描，这些都不需要审批。
+      你不得修改任何设备配置。任何结论都必须给出 evidence，指向具体的时序采样、
+      配置快照或拓扑事实；证据不足时明确说"证据不足"，不要推测。

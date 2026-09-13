@@ -1,0 +1,55 @@
+# 站点定义
+site:
+  id: home-01
+  name: "示范站点 - 家庭/小型办公室"
+  timezone: Asia/Shanghai
+  contacts:
+    owner: "客户负责人"
+    onsite: "现场联系人"
+    escalation: "升级联系人"
+
+# 接入方式
+access:
+  appliance: "树莓派 5 / 8GB + NVMe"
+  uplink_iface: eth0
+  probe_ip: 10.0.0.236
+  # ★ 必须显式声明：探针所有广播/组播从此接口发出
+  egress_iface: eth0
+
+# 楼层与房间（3D 场景的空间骨架）
+floors:
+  - id: F1
+    name: "一层"
+    plan: assets/plans/F1.svg          # 平面图（3D 下的底图）
+  - id: F2
+    name: "二层"
+    plan: assets/plans/F2.svg
+
+rooms:
+  - { id: F1-living,  floor: F1, name: "客厅" }
+  - { id: F1-office,  floor: F1, name: "书房" }
+  - { id: F1-entry,   floor: F1, name: "玄关" }
+  - { id: F2-hall,    floor: F2, name: "二楼过道" }
+
+# 网段与 VLAN
+segments:
+  - id: lan-main
+    cidr: 10.0.0.0/24
+    vlan: null                # 扁平网络，未划分 VLAN（本身就是一条待优化项）
+    gateway: 10.0.0.1
+    purpose: "主网（有线 + 无线 + IoT + CCTV 混跑）"
+    dhcp: { server: 10.0.0.1, pool: "10.0.0.2-10.0.0.254" }
+  - id: mgmt-virtual
+    cidr: 192.168.56.0/24
+    purpose: "VirtualBox Host-Only（应排除出扫描范围）"
+    exclude: true
+
+# 无线
+wireless:
+  ssids:
+    - { ssid: geeqee,      band: ["2.4GHz", "5GHz"], security: WPA3, ap: ap-gateway, channel_2g: 11, channel_5g: 44 }
+    - { ssid: Geeqee2024,  band: ["2.4GHz", "5GHz"], security: WPA2, ap: ap-h3c,     channel_2g: 1,  channel_5g: 36 }
+  # 已知干扰源（人工记录，辅助根因分析）
+  known_interference:
+    - { note: "ch1 上邻居 TMOBILE 802.11be，信道利用率一度达 80%", band: "2.4GHz", channel: 1 }
+    - { note: "ch11 同信道强信号 AP 达 11 个", band: "2.4GHz", channel: 11 }

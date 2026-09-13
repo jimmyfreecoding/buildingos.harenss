@@ -1,0 +1,44 @@
+# 扫描授权范围 —— 产品合规的第一道闸
+#
+# 缺少本文件或已过期时，探针只做「被动接收」（监听 beacon/广播），
+# 不发起任何主动扫描（不 ping 扫段、不端口扫描、不登录设备）。
+
+authorization:
+  document_no: "AUTH-2026-0910-001"        # 客户签署的授权书编号
+  signed_by: "客户负责人"
+  signed_at: "2026-09-10"
+  valid_until: "2027-09-10"                # 到期后自动降级为被动模式
+
+# 允许主动扫描的目标（白名单，逐条列明）
+active_scan:
+  allowed:
+    - cidr: 10.0.0.0/24
+      methods: [icmp, arp, tcp-connect, udp-probe, snmp-read, vendor-api-read]
+      note: "客户自有网络"
+  denied:
+    - cidr: 192.168.56.0/24
+      note: "VirtualBox Host-Only，非客户网络"
+    - cidr: 10.7.0.0/24
+      note: "TAP/VPN 虚拟网段"
+
+# 端口扫描的礼貌参数（避免把 IoT 设备打挂 —— 廉价设备很容易被并发打崩）
+scan_profile:
+  tcp:
+    max_concurrency: 64
+    connect_timeout_ms: 500
+    retries: 1
+    exclude_ports: [9100]                  # 打印机等脆弱服务
+  icmp:
+    max_concurrency: 96
+    interval_ms: 120
+    packet_size: 32
+
+# 写入类操作范围（需额外逐次审批）
+write_scope:
+  windows: ["Mon-Fri 09:00-18:00"]
+  require_approval: true
+  require_rollback_point: true
+  allowed_targets:
+    - 10.0.0.204      # H3C AP（唯一可手动改信道的设备）
+  forbidden_targets:
+    - 10.0.0.1        # 主网关：只出建议，不自动改

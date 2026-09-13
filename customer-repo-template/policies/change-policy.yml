@@ -1,0 +1,38 @@
+# 变更策略 —— 决定「哪些设备允许委托自动变更」
+
+change_policy:
+  default: propose-only          # 默认：只出方案，人工执行
+
+  tiers:
+    delegated:                   # 委托写：产品可自动执行（需审批 + 回滚点）
+      - target: "10.0.0.204"
+        actions: [change-wifi-channel, change-wifi-power]
+        window: "Mon-Fri 09:00-18:00"
+        auto_rollback: true
+        verify_after_s: 120
+    assisted:                    # 半自动：产品生成步骤，人工点执行
+      - role: camera
+        actions: [change-camera-bitrate, change-camera-fps]
+      - role: iot
+        actions: [restart-iot]
+    proposed:                    # 只出建议
+      - role: gateway
+      - role: firewall
+      - role: access-control
+
+  guards:
+    max_changes_per_hour: 5
+    require_two_person_for_roles: [firewall, access-control, gateway]
+    freeze_during_incident: true     # 有未关闭的 P1 告警时禁止任何变更
+    always_backup_before_write: true
+
+# 变更记录模板（PR 自动附带）
+change_record:
+  required_fields:
+    - finding_id
+    - target
+    - action
+    - evidence
+    - impact_analysis
+    - rollback_plan
+    - verify_plan

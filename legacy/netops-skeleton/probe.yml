@@ -1,0 +1,34 @@
+# 一次性采集任务用的 overlay —— 叠加在 headless profile 上，跑完即退
+#
+# 计划任务调用示例（Windows）：
+#   dsh --profile headless --patch C:\netops\overlay\probe.yml "执行一轮网络采集并在有异常时生成报告"
+# Linux（systemd timer）：
+#   ExecStart=/usr/local/bin/dsh --profile headless --patch /opt/netops/overlay/probe.yml "执行一轮网络采集并在有异常时生成报告"
+#
+# headless 没有 webserver / 浏览器层，只挂核心 Agent，因此这里只放采集必需的行走。
+
+- insert:
+    - id: netops-store-sqlite
+      name: '@deepseek-ai/dsh-storage-sqlite'
+      config:
+        path: C:\netops\data\netops.db
+        journalMode: wal
+
+    - id: netops-credentials-local
+      name: '@deepseek-ai/dsh-credentials-local'
+
+    # ---- 产品探针包（P0 产出后取消注释）----
+    # - id: netops-probe
+    #   name: '@acme/dsh-netops-probe'
+    #   config:
+    #     site: home
+    #     segments:
+    #       - 10.0.0.0/24
+    #     probeInterface: 10.0.0.236
+
+# ---- 需要确定性执行顺序时，用 config 锁定 persona，避免每轮行为漂移 ----
+- id: system-prompt
+  config:
+    personaSuffix: >-
+      你是网络运维采集器。只调用探针工具产出结构化事实，不要自由发挥；
+      工具缺失或权限不足时必须在结果里如实上报，禁止推测。

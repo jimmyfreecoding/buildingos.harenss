@@ -1,0 +1,192 @@
+# NetOps 一体机 —— 全栈编排
+#
+# 目标平台：树莓派 5 (arm64, 8GB + NVMe SSD) / x86 迷你主机 / 笔记本
+# 启动：cp .env.example .env && 填好引用名 && docker compose up -d
+#
+# 关键设计：
+#  1) probe 必须 network_mode=host 才能拿到真实网卡做 ARP/广播/组播发现；
+#     它通过宿主机 localhost 访问 mqtt/api（因此下面把这两个端口也映射到宿主机）。
+#  2) probe 需要 NET_RAW/NET_ADMIN：ARP 扫描、原始套接字、无线监听。
+#  3) 凭据一律以「引用名」出现在 env，明文由本地 Vault / DSH credentials 提供。
+
+name: netops
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  # ─────────────────────────── 数据层 ───────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    <<: [*restart, *logging]
+    environment:
+      POSTGRES_DB: netops
+      POSTGRES_USER: netops
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./secrets/pg_password:/run/secrets/pg_password:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netops -d netops"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  tdengine:
+    image: tdengine/tdengine:3.3.0.0
+    <<: [*restart, *logging]
+    environment:
+      TAOS_FQDN: tdengine
+    volumes:
+      - taos-data:/var/lib/taos
+      - taos-log:/var/log/taos
+    ports:
+      - "6030:6030"    # 原生协议
+      - "6041:6041"    # REST / taosAdapter
+    healthcheck:
+      test: ["CMD-SHELL", "taos -s 'show databases;' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  mqtt:
+    image: emqx/emqx:5.8
+    <<: [*restart, *logging]
+    environment:
+      EMQX_NODE__NAME: emqx@netops
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: ${MQTT_DASHBOARD_PASSWORD:?see .env}
+    volumes:
+      - emqx-data:/opt/emqx/data
+    ports:
+      - "1883:1883"    # 探针/执行器走宿主 localhost:1883
+      - "18083:18083"  # Dashboard（建议只在内网开放）
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ─────────────────────────── 采集层 ───────────────────────────
+  probe:
+    build: ./app/probe
+    <<: [*restart, *logging]
+    # 必须 host 网络：ARP / 广播 / 组播 / 无线扫描都要真实网卡
+    network_mode: host
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+      - NET_BIND_SERVICE
+    environment:
+      NETOPS_SITE: ${SITE_ID:?see .env}
+      NETOPS_PROBE_ID: ${PROBE_ID:-probe-01}
+      # 关键：显式指定探针出口接口，避免广播/组播被虚拟网卡抢走
+      NETOPS_EGRESS_IFACE: ${PROBE_EGRESS_IFACE:?e.g. eth0}
+      NETOPS_MQTT_URL: mqtt://127.0.0.1:1883
+      NETOPS_API_URL: http://127.0.0.1:8080
+      NETOPS_PROBE_INTERVAL_S: ${PROBE_INTERVAL_S:-300}
+      NETOPS_SCAN_SCOPE_FILE: /etc/netops/scan-scope.yml
+    volumes:
+      - ./config/scan-scope.yml:/etc/netops/scan-scope.yml:ro
+      - probe-pcap:/var/lib/netops/pcap      # 只保留异常时段抓包
+    # 受限设备上给探针留出上限，避免扫描打满 CPU 影响 DB
+    deploy:
+      resources:
+        limits: { cpus: "1.5", memory: 768M }
+
+  # ─────────────────────────── 决策层（Harness） ───────────────────────────
+  agent:
+    build: ./app/agent          # 内含 DSH + netops profile
+    <<: [*restart, *logging]
+    environment:
+      DSH_HOME: /data/dsh
+      # 模型凭据同样只放引用名，明文由 DSH credentials 提供
+      DSH_LLM_KEY_REF: ${DSH_LLM_KEY_REF:?e.g. NETOPS_LLM_KEY}
+      NETOPS_API_URL: http://api:8080
+      NETOPS_PG_DSN: postgres://netops@postgres:5432/netops
+      NETOPS_TD_DSN: http://tdengine:6041
+      NETOPS_MQTT_URL: mqtt://mqtt:1883
+    volumes:
+      - dsh-home:/data/dsh
+      - ./config/overlay:/opt/netops/overlay:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+      mqtt: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 1024M }
+
+  # ─────────────────────────── 应用层 ───────────────────────────
+  api:
+    build: ./app/api
+    <<: [*restart, *logging]
+    environment:
+      NETOPS_SITE: ${SITE_ID}
+      NETOPS_PG_DSN: postgres://netops@postgres:5432/netops
+      NETOPS_TD_DSN: http://tdengine:6041
+      NETOPS_MQTT_URL: mqtt://mqtt:1883
+      NETOPS_VAULT_KEY_REF: ${NETOPS_VAULT_KEY_REF:?master key reference}
+      NETOPS_GIT_REMOTE: ${CUSTOMER_GIT_REMOTE:-}
+      NETOPS_GIT_DEPLOY_KEY_REF: ${GIT_DEPLOY_KEY_REF:-}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres: { condition: service_healthy }
+      tdengine: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: ./app/web
+    <<: [*restart, *logging]
+    environment:
+      NETOPS_API_URL: http://api:8080
+      NETOPS_AGENT_WS: ws://api:8080/chat
+    ports:
+      - "80:80"
+    depends_on: [api]
+
+  worker:
+    build: ./app/worker
+    <<: [*restart, *logging]
+    environment:
+      NETOPS_API_URL: http://api:8080
+      NETOPS_MQTT_URL: mqtt://mqtt:1883
+      NETOPS_TZ: ${NETOPS_TZ:-Asia/Shanghai}
+      REPORT_DAILY_CRON: ${REPORT_DAILY_CRON:-0 7 * * *}
+      REPORT_WEEKLY_CRON: ${REPORT_WEEKLY_CRON:-0 7 * * 1}
+    depends_on:
+      api: { condition: service_healthy }
+    # 报告生成、适配器执行、周期任务的调度器（不依赖 DSH 的会话内 schedule）
+
+  # 客户不允许配置出公网 Git 时启用（同一套 GitOps，只换 remote）
+  gitea:
+    image: gitea/gitea:1.22
+    <<: [*restart, *logging]
+    profiles: ["selfhosted-git"]
+    environment:
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: netops
+      GITEA__database__USER: netops
+    volumes:
+      - gitea-data:/data
+    ports:
+      - "3000:3000"
+      - "2222:22"
+
+volumes:
+  pg-data:
+  taos-data:
+  taos-log:
+  emqx-data:
+  probe-pcap:
+  dsh-home:
+  gitea-data:

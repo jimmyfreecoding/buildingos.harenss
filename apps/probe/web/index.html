@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AegisNet · 网络探针控制台</title>
+<style>
+  :root { --bg:#0b1120; --card:rgba(255,255,255,0.05); --line:rgba(255,255,255,0.09); --txt:#e2e8f0; --sub:#94a3b8; --dim:#64748b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font-family:ui-sans-serif,system-ui,sans-serif; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:16px 28px; border-bottom:1px solid var(--line); flex-wrap:wrap; gap:10px; }
+  header h1 { font-size:20px; margin:0; letter-spacing:1px; }
+  header .sub { font-size:12px; color:var(--dim); margin-left:10px; }
+  #statusbar { font-size:12px; color:var(--sub); }
+  nav { display:flex; gap:8px; padding:12px 28px 0; flex-wrap:wrap; }
+  nav button { background:transparent; color:#7dd3fc; border:1px solid rgba(56,189,248,0.3); border-radius:6px; padding:6px 14px; cursor:pointer; font-size:13px; }
+  nav button.active { background:rgba(56,189,248,0.25); }
+  main { padding:18px 28px 40px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:16px; }
+  .card h2 { font-size:14px; margin:0 0 10px; color:#f8fafc; }
+  .grid { display:grid; gap:14px; }
+  .g4 { grid-template-columns:repeat(4,1fr); } .g3 { grid-template-columns:repeat(3,1fr); }
+  @media (max-width:900px){ .g4,.g3 { grid-template-columns:1fr 1fr; } }
+  .score { text-align:center; padding:14px; background:rgba(255,255,255,0.04); border:1px solid var(--line); border-radius:12px; }
+  .score .v { font-size:40px; font-weight:800; line-height:1.1; }
+  .score .t { font-size:13px; color:var(--sub); margin-top:4px; }
+  .row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; }
+  .row span:first-child { color:var(--sub); }
+  pre { background:rgba(0,0,0,0.35); border:1px solid var(--line); border-radius:10px; padding:14px; font-size:13px; line-height:1.6; white-space:pre-wrap; overflow:auto; max-height:60vh; color:var(--txt); }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th,td { text-align:left; padding:5px 8px; border-bottom:1px solid rgba(255,255,255,0.06); }
+  th { color:var(--dim); font-weight:600; }
+  .weak { color:#f87171; }
+  .good { color:#34d399; }
+  .legend span { display:inline-flex; align-items:center; gap:4px; margin-right:10px; font-size:11px; color:var(--sub); }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .hint { font-size:12px; color:var(--dim); margin-top:8px; }
+  #toast { position:fixed; top:14px; right:14px; background:rgba(248,113,113,0.15); border:1px solid rgba(248,113,113,0.4); color:#fca5a5; border-radius:8px; padding:10px 14px; font-size:12px; display:none; max-width:360px; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>AEGISNET · 网络探针控制台<span class="sub">AI-Powered Infrastructure &amp; Security</span></h1></div>
+  <div id="statusbar">连接中…</div>
+</header>
+<nav id="nav">
+  <button data-view="dash" class="active">健康大屏</button>
+  <button data-view="topo">拓扑图</button>
+  <button data-view="quality">链路质量</button>
+  <button data-view="report">体检报告</button>
+  <button data-view="assets">资产与手册</button>
+  <button id="btn-scan">重新扫描</button>
+  <button id="btn-quality">质量评估</button>
+</nav>
+<main id="main"></main>
+<div id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>

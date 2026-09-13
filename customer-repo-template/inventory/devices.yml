@@ -1,0 +1,123 @@
+# 设备台账（非密）
+#
+# 由探针自动写入候选条目，人工在 UI 上确认后置 governance 级别与 location。
+# 主键是规范化的 MAC —— IP 会变，MAC 不会。
+#
+# governance 四级：
+#   L0 在网 / L1 识别 / L2 可读（能采配置）/ L3 可写（能受控变更）
+#
+# 本文件对应真实案例（见《网络拓扑与卡顿根因分析.md》）
+
+devices:
+  - mac: "F8:D0:0E:A6:5E:27"
+    ip: "10.0.0.1"
+    hostname: ["gateway", "geeqee"]
+    vendor: "CommScope/Technicolor"
+    model: "Xfinity XB 系列网关"
+    role: gateway
+    location: { floor: F1, room: F1-entry, rack: null, u: null }
+    services: [ { port: 80, proto: tcp, service: http, banner: "Xfinity Broadband Router Server" },
+                { port: 443, proto: tcp, service: https },
+                { port: 53, proto: udp, service: dns } ]
+    governance: L2
+    credential_ref: "VAULT://home-01/gateway"
+    runbook: xfinity-gateway
+    notes: "Wi-Fi 信道被 Comcast 云托管，本地 Web 只读 —— 改信道能力受限，需如实上报"
+
+  - mac: "18:C0:09:64:D5:40"
+    ip: "10.0.0.204"
+    hostname: ["Geeqee2024"]
+    vendor: "New H3C"
+    model: "H3C Magic 系列（wnm/quicknet 固件）"
+    role: ap
+    location: { floor: F2, room: F2-hall }
+    services: [ { port: 23, proto: tcp, service: telnet, risk: high },
+                { port: 53, proto: udp, service: dns },
+                { port: 80, proto: tcp, service: http },
+                { port: 443, proto: tcp, service: https } ]
+    wireless: { ssid: Geeqee2024, bands: ["2.4GHz", "5GHz"], channel_2g: 1, channel_5g: 36 }
+    governance: L3
+    credential_ref: "VAULT://home-01/h3c-ap"
+    runbook: h3c-magic-ap
+    notes: "★ 本网络中唯一可手动设信道的 AP —— 优化动作应优先落在它上面"
+
+  - mac: "08:54:11:B6:C5:47"
+    ip: "10.0.0.119"
+    vendor: "Hangzhou Hikvision"
+    model: "IP Camera (AD790)"
+    role: camera
+    media_type: wired                  # 实测 4ms / 抖动 2.7ms / 0% 丢包
+    location: { floor: F1, room: F1-entry }
+    services: [ { port: 80, proto: tcp, service: http },
+                { port: 554, proto: tcp, service: rtsp },
+                { port: 8000, proto: tcp, service: hikvision-sdk } ]
+    discovery: { onvif: false, mdns: ["_psia._tcp", "_CGI._tcp"] }
+    governance: L2
+    credential_ref: "VAULT://home-01/cam-hikvision-119"
+    runbook: hikvision-ipc
+    notes: "有线接入，链路健康，可作为无线摄像头的对照基准"
+
+  - mac: "E0:D3:62:B9:B9:87"
+    ip: "10.0.0.177"
+    vendor: "TP-Link"
+    model: "Tapo 摄像头"
+    role: camera
+    media_type: wifi
+    location: { floor: F1, room: F1-office }
+    services: [ { port: 443, proto: tcp, service: https, cert: "CN=TPRI-DEVICE" },
+                { port: 554, proto: tcp, service: rtsp },
+                { port: 2020, proto: tcp, service: onvif },
+                { port: 8443, proto: tcp, service: https-alt } ]
+    discovery: { onvif: null }         # 该台未响应 ONVIF 发现（另一台 .94 有响应）
+    governance: L2
+    credential_ref: "VAULT://home-01/cam-tapo-177"
+    runbook: tapo-camera
+    metrics_baseline:
+      icmp_rtt_avg_ms: 24.7
+      icmp_jitter_ms: 18.8
+      icmp_loss_pct: 5.0
+      rtsp_rtt_jitter_ms: 23.1
+    notes: "⚠ 卡顿投诉主体。Wi-Fi 链路；平均 24.7ms / 峰值 231ms / 丢包 5%"
+
+  - mac: "E0:D3:62:B9:D3:0D"
+    ip: "10.0.0.94"
+    vendor: "TP-Link"
+    model: "Tapo 摄像头"
+    role: camera
+    media_type: wifi
+    services: [ { port: 554, proto: tcp, service: rtsp },
+                { port: 2020, proto: tcp, service: onvif } ]
+    discovery: { onvif: true }
+    governance: L2
+    credential_ref: "VAULT://home-01/cam-tapo-094"
+    runbook: tapo-camera
+    metrics_baseline: { icmp_rtt_avg_ms: 14.8, icmp_jitter_ms: 11.6, icmp_loss_pct: 3.3 }
+
+  - mac: "A0:48:1C:9C:A9:34"
+    ip: "10.0.0.251"
+    vendor: "（自建）"
+    model: "Docker NVR 主机"
+    role: nvr
+    media_type: wired
+    services: [ { port: 22, proto: tcp, service: ssh },
+                { port: 554, proto: tcp, service: rtsp, banner: "ZLMediaKit" },
+                { port: 8080, proto: tcp, service: http, banner: "ZLMediaKit(git 427bb56)" },
+                { port: 8443, proto: tcp, service: https },
+                { port: 9000, proto: tcp, service: http, banner: "Portainer" } ]
+    governance: L3
+    credential_ref: "VAULT://home-01/nvr-251"
+    runbook: zlm-nvr
+    notes: "本地流媒体代理，看摄像头应优先走它而不是厂商云 P2P"
+
+# ── IoT（批量，摘要展示）──────────────────────────────────────
+iot_fleet:
+  - { vendor: "TP-Link Kasa", model: "KS200 智能墙壁开关", count: 6,
+      macs: ["98:25:4A:FA:92:EC","98:25:4A:64:A8:AB","98:25:4A:FA:9A:B8","98:25:4A:FA:97:F9","98:25:4A:FA:96:5A","98:25:4A:FA:9B:04"],
+      protocol: "tcp/9999 (legacy autokey XOR)", rssi_dbm: -45, media_type: wifi,
+      governance: L1, note: "固件 1.0.8 Build 240424；低速率设备，占 2.4G 空口" }
+  - { vendor: "TP-Link Kasa", model: "（固件 1.0.12 型号）", count: 3,
+      macs: ["60:83:E7:08:01:9F","60:83:E7:09:29:5B","60:83:E7:09:2B:DD"],
+      protocol: "tcp/9999", media_type: wifi, governance: L1 }
+  - { vendor: "Tuya Smart", model: "Tuya 智能设备", count: 2,
+      macs: ["B8:06:0D:7C:72:21","B8:06:0D:7B:D1:B1"], governance: L0, note: "仅云连接，无本地端口" }
+  - { vendor: "Resideo", model: "恒温/安防", count: 1, macs: ["B8:2C:A0:99:80:04"], governance: L0 }

@@ -1,0 +1,42 @@
+# netops profile 的用户层（products / 客户自己的层）
+#
+# 位置：$DSH_HOME/profiles/netops/cordis.patch.yml
+# 层序：bundle 层 → 本文件 → $DSH_HOME/cordis.patch.yml → --patch 叠加
+#
+# 每次改完必须校验：
+#   dsh --profile netops --dump-config
+# 它会打印合成后的完整树并标注每层来源；行不通时会直接报 package 不可解析或 config 非法。
+#
+# 注意：insert 的 id 若与某个 bundle 层已有行重名会冲突。
+#       先跑一次 --dump-config 搜一下同名 id；已存在就改用「id 定位覆盖」而不是 insert。
+
+- insert:
+    # ---- 存储：SQLite 后端，承载拓扑图 / 时序采样 / 配置快照 ----
+    # Config: { path: string(必填, 绝对路径), journalMode?: wal|delete|truncate|persist 默认 wal }
+    - id: netops-store-sqlite
+      name: '@deepseek-ai/dsh-storage-sqlite'
+      config:
+        path: C:\netops\data\netops.db
+        journalMode: wal
+
+    # ---- 凭据：本地 provider（env / file / project-env / user-env 四层）----
+    # cordis.yml 里只放凭据「引用名」，值落 $DSH_HOME/.credentials.yaml
+    - id: netops-credentials-local
+      name: '@deepseek-ai/dsh-credentials-local'
+
+    # ---- 产品探针包（P0 产出后取消注释）----
+    # - id: netops-probe
+    #   name: '@acme/dsh-netops-probe'
+    #   config:
+    #     site: home
+    #     segments:
+    #       - 10.0.0.0/24
+    #     probeInterface: 10.0.0.236   # 必须显式指定！否则广播/组播会走虚拟网卡
+
+    # ---- 告警入口：外部系统 POST 进来即创建一个 Session 做归因（P2）----
+    # - id: netops-webhook
+    #   name: '@deepseek-ai/dsh-webhook'
+
+# ---- 打开产品自带的 Client 端 UI（P1）----
+# - id: ui-netops
+#   disabled: false

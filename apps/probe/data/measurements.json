@@ -1,0 +1,18 @@
+[
+  {
+    "at": "2026-08-18T21:02:25.904Z",
+    "weakCount": 4,
+    "online": 25,
+    "deviceCount": 27,
+    "gatewayVerdict": "good",
+    "internetVerdict": "poor"
+  },
+  {
+    "at": "2026-08-18T21:10:30.404Z",
+    "weakCount": 4,
+    "online": 25,
+    "deviceCount": 27,
+    "gatewayVerdict": "good",
+    "internetVerdict": "poor"
+  }
+]

@@ -1,0 +1,31 @@
+# DSH 网络探针 · systemd 单元（Pi 部署模板）
+# 放置：sudo cp dsh-probe.service /etc/systemd/system/ && sudo systemctl daemon-reload
+# 启用：sudo systemctl enable --now dsh-probe
+
+[Unit]
+Description=DSH Network Probe (AegisNet.ai)
+Documentation=file:///opt/probe/docs/
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=probe
+Group=probe
+WorkingDirectory=/opt/probe
+# 说明：以 DSH 无头方式运行探针会话。
+# 具体 ExecStart 按 DSH CLI 的实际入口填写（如 `dsh probe` / `dsh run --preset probe`），
+# 在 Pi 首次联调时验证后替换，并确保以 probe 用户可执行。
+ExecStart=/usr/bin/env dsh run --preset probe --workspace /opt/probe
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+Environment=NODE_ENV=production
+Environment=DSH_HOME=/opt/probe/.dsh
+# 安全加固
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
