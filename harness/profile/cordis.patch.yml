@@ -1,62 +1,67 @@
 # netops profile 用户层 —— DSH 侧的唯一改动面
 #
-# 位置：$DSH_HOME/profiles/netops/cordis.patch.yml
+# 容器内的位置：/data/dsh/profiles/netops/cordis.patch.yml
 # 校验：dsh --profile netops --dump-config
 #
 # 层序：bundle 层 → 本文件 → $DSH_HOME/cordis.patch.yml → --patch 叠加
-#
-# M0 前半段：两个 @netops/* 行先注释掉，用现有包跑通基础 harness。
-# M0 后半段：工具注册器与 netops 工具包建好后打开。
 
 # ── 1. 只读探索所需的执行能力 ────────────────────────────────
 - id: tools
   config:
-    # 程序化工具调用：模型写 Python 代码，在代码里直接调工具
+    # 程序化工具调用：模型写代码，在代码里一次调多个工具，而不是一问一答
     mode: ptc
 
+# 代码执行只有一个位置（`codeRuntime` 服务），bundle 里默认插的是 JS 的
+# worker-thread。要换成 Python 就必须**覆盖同一个 id**（`code-runtime`），
+# 不能新增一行 —— 新增会变成第二个提供者，报
+# `service "codeRuntime" has been registered at <WorkerThreadCodeRuntime>`。
+#
+# Python 版只存在于源码里（npm 上 404），所以镜像是源码构建的
+# （见 harness/service/Dockerfile），启动脚本按路径把它装进 profile。
 - id: code-runtime
-  name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+  name: '@deepseek-ai/dsh-experimental-code-runtime-python'
 
-- insert:
-    - id: code-runtime-python
-      name: '@deepseek-ai/dsh-experimental-code-runtime-python'
+# ── 2. 监听地址 ──────────────────────────────────────────────
+# 默认绑 127.0.0.1 只有容器内部能访问；CLI 的 --host 明确拒绝 0.0.0.0，
+# 但 webserver 本身支持这个值，所以在用户层直接覆盖（本层在 bundle 层之后应用）。
+# 注意：patch 会替换整块 config，所以每个键都要重述一遍。
+- id: webserver
+  config:
+    host: '0.0.0.0'
+    port: !!js Number(process.env.NETOPS_DSH_PORT ?? 3090)
+    compression: gzip
+    compressionLevel: 1
+    compressionThresholdBytes: 1024
 
 # ── 2. 模型 ──────────────────────────────────────────────────
-# 便宜模型做汇总/叙述，强模型做根因与造工具；
-# 任务级路由在 harness/service 里做，这里只定默认值。
+# 便宜模型做汇总/叙述，强模型做根因与造工具；任务级路由以后在 service 层做。
 - id: agent-default-model
   config:
     provider: deepseek-official
-    model: deepseek-chat
+    model: deepseek-flash
+    reasoningEffort: high
 
 # ── 3. netops 能力 ───────────────────────────────────────────
-- insert:
-    # 扫 toolbox/ 与 adapters/，把每个 .py 注册成工具（见 CONTRACTS.md B 节）
-    - id: netops-toolbox
-      name: '@netops/dsh-toolbox-registrar'
-      config:
-        dirs:
-          - /opt/netops/harness/toolbox
-          - /opt/netops/harness/adapters
-        python: python3
-        timeoutMs: 30000
-        maxOutputBytes: 65536
-
-    # 内置只读工具：把产品能力以「领域工具」而非裸命令暴露给模型
-    - id: netops-tools
-      name: '@netops/dsh-netops-tools'
-      config:
-        apiUrl: http://127.0.0.1:8080        # host 网络，走宿主端口
-        tdUrl: http://127.0.0.1:6041
-        pgDsnRef: NETOPS_PG_DSN              # 引用名，不是明文
-        tools:
-          - probe_snapshot        # 子网一段时间的质量快照
-          - device_detail         # 设备卡片（身份/位置/链路/服务/治理级别）
-          - device_config         # 归一化配置（L2 以上）
-          - cctv_health           # 码率稳定性/丢帧/体验分
-          - wifi_environment      # 信道利用率/噪声/关联表
-          - topology_query        # 邻接与路径
-          - findings_query        # 历史 finding 与证据
+# 下面两个插件包还没建（M2 的活）。引用了不存在的包会让整个 profile 启动失败，
+# 所以先注释掉，插件包做完后打开。
+#
+# - insert:
+#     - id: netops-toolbox
+#       name: '@netops/dsh-toolbox-registrar'
+#       config:
+#         dirs: [/opt/netops/harness/toolbox, /opt/netops/harness/adapters]
+#         python: python3
+#         timeoutMs: 30000
+#         maxOutputBytes: 65536
+#
+#     - id: netops-tools
+#       name: '@netops/dsh-netops-tools'
+#       config:
+#         apiUrl: http://127.0.0.1:8080
+#         tdUrl: http://127.0.0.1:6041
+#         pgDsnRef: NETOPS_PG_DSN
+#         tools: [probe_snapshot, device_detail, device_config, cctv_health,
+#                 wifi_environment, topology_query, findings_query]
 
 # ── 4. persona ───────────────────────────────────────────────
 - id: system-prompt

@@ -1,0 +1,58 @@
+/* 演示模式的外壳。
+   IocDashboard 自己负责收起编辑用的顶栏 / 底栏 / 工具条（.is-presenting），
+   这里只加一条翻页栏 —— 鼠标不动就淡出，方便直接截图放进 PPT。 */
+
+.deck{position:relative;width:100%;height:100dvh;background:#fff}
+
+/* ===== 演示工具条：挂在顶栏里、紧挨着「项目 · 演示 · 页码」，白底配色 ===== */
+.deck-chrome{
+  display:flex;align-items:center;gap:6px;margin-left:auto;margin-right:14px;
+  padding:5px 8px;border-radius:26px;
+  background:rgba(255,255,255,.94);border:1px solid #e2e8ee;
+  box-shadow:0 6px 18px rgba(20,45,70,.1);backdrop-filter:blur(12px);
+  color:#33404b;font-size:12px;
+}
+
+/* 演示 / 编辑 两个模式，做成胶囊里的一对小按钮 */
+.deck-modes{display:flex;gap:2px;padding:2px;border-radius:20px;background:#f1f4f7}
+.deck-modes>button{padding:4px 12px;border:0;border-radius:16px;background:none;font:600 12px 'Noto Sans SC','Microsoft YaHei',sans-serif;color:#7c8a93;cursor:pointer}
+.deck-modes>button:hover{color:#33404b}
+.deck-modes>button.is-on{background:#fff;color:#2f6fd0;box-shadow:0 1px 4px rgba(20,45,70,.14)}
+
+.deck-chrome .deck-nav{width:28px;height:28px;border:0;border-radius:50%;display:grid;place-items:center;background:none;font-size:15px;line-height:1;color:#5b6b76;cursor:pointer}
+.deck-chrome .deck-nav:hover:not(:disabled){background:#eef3f8;color:#2f6fd0}
+.deck-chrome .deck-nav:disabled{opacity:.3;cursor:not-allowed}
+
+.deck-count{font:500 12px 'Rajdhani',sans-serif;letter-spacing:1px;color:#8b98a2;padding:0 2px}
+.deck-count b{color:#1b2a38;font-size:14px}
+
+.deck-divider{width:1px;height:18px;background:#e2e8ee;margin:0 3px}
+
+.deck-chrome .deck-action{height:28px;padding:0 11px;border:0;border-radius:14px;background:none;font:500 11px 'Noto Sans SC','Microsoft YaHei',sans-serif;color:#5b6b76;cursor:pointer;white-space:nowrap}
+.deck-chrome .deck-action:hover:not(:disabled){background:#eef3f8;color:#2f6fd0}
+.deck-chrome .deck-action:disabled{opacity:.35;cursor:not-allowed}
+.deck-chrome .deck-action.is-on{background:#e8f1fc;color:#2f6fd0}
+
+.deck-add{height:28px;padding:4px 8px;border-radius:8px;background:#f1f4f7;border:1px solid #e2e8ee;color:#33404b;font:inherit;font-size:11px;cursor:pointer}
+.deck-add option{color:#12212e}
+.deck-hint{font-size:11px;color:#8b98a2;white-space:nowrap}
+
+.deck-exit{padding:0 12px;height:28px;display:grid;place-items:center;border-radius:14px;font-size:11px;color:#5b6b76;white-space:nowrap;text-decoration:none}
+.deck-exit:hover{background:#eef3f8;color:#2f6fd0}
+
+.deck-note{
+  position:fixed;z-index:61;top:76px;left:50%;transform:translateX(-50%);
+  padding:8px 16px;border-radius:20px;background:rgba(255,255,255,.96);
+  border:1px solid #e2e8ee;color:#33404b;font-size:12px;
+  box-shadow:0 8px 22px rgba(20,45,70,.14);backdrop-filter:blur(12px);white-space:nowrap;
+}
+
+.deck-empty{
+  height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  background:#fff;color:#4a6478;text-align:center;
+  font-family:'Noto Sans SC','Microsoft YaHei',sans-serif;
+}
+.deck-empty h2{font-size:19px;font-weight:600;color:#25384a}
+.deck-empty p{font-size:13px;color:#6b8296;line-height:1.9}
+.deck-empty code{background:#eef4f8;padding:2px 6px;border-radius:3px;font-size:12px;color:#33566f}
+.deck-empty a{font-size:13px;color:#2f7fb8}

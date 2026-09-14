@@ -1,0 +1,96 @@
+name: build
+
+# 提交即构建。当前仓库的应用服务还在陆续落地，所以：
+#   · 基础设施编排始终校验（配置写错立刻发现）
+#   · apps/ 下凡是带 Dockerfile 的目录自动进构建矩阵 —— 新加一个应用不用改本文件
+on:
+  push:
+    branches: [master, main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # ── 1. 校验编排与建表脚本，并发现需要构建的应用 ─────────────
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.discover.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 校验 infra 编排
+        run: docker compose -f deploy/docker-compose.infra.yml config --quiet
+
+      - name: 校验完整编排（若已建立）
+        run: |
+          if [ -f deploy/docker-compose.yml ]; then
+            docker compose -f deploy/docker-compose.yml config --quiet
+          else
+            echo "deploy/docker-compose.yml 尚未建立，跳过"
+          fi
+
+      - name: 校验建表脚本语法
+        run: |
+          set -e
+          docker run --rm -d --name pgcheck \
+            -e POSTGRES_PASSWORD=x -e POSTGRES_DB=netops \
+            postgres:16-alpine >/dev/null
+          for i in $(seq 1 30); do
+            docker exec pgcheck pg_isready -U postgres >/dev/null 2>&1 && break
+            sleep 1
+          done
+          docker exec -i pgcheck psql -U postgres -d netops -v ON_ERROR_STOP=1 \
+            < packages/db/schema.sql
+          docker rm -f pgcheck >/dev/null
+
+      - name: 发现带 Dockerfile 的应用
+        id: discover
+        run: |
+          apps=$(find apps -maxdepth 2 -name Dockerfile -printf '%h\n' 2>/dev/null \
+                 | xargs -r -n1 basename | sort -u \
+                 | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "apps=${apps:-[]}" >> "$GITHUB_OUTPUT"
+          echo "发现应用: ${apps:-[]}"
+
+  # ── 2. 构建应用镜像 ────────────────────────────────────────
+  build:
+    needs: validate
+    if: needs.validate.outputs.apps != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.validate.outputs.apps) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 登录镜像仓库
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 构建并推送 ${{ matrix.app }}
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/${{ matrix.app }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.app }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.app }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

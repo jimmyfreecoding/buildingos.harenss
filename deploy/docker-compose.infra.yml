@@ -1,0 +1,125 @@
+# 开发基础设施 —— 只起数据服务，不起应用服务
+#
+# 用途：日常开发。开发者在宿主机上跑前后端（有热更新），依赖这三个容器。
+#       `docker compose -f deploy/docker-compose.infra.yml up -d`
+#
+# 端口全部错开本机已有的 buildingos 共享基础设施（那套占用 5432/1883/18083），
+# 互不干扰：
+#   PostgreSQL  55432   （已有那套是 5432）
+#   TDengine    56030 / 56041
+#   EMQX        51883 / 58083  ← 默认不启动，见文末说明
+#
+# 数据落在具名卷里，`down` 不丢；要清空用 `down -v`。
+
+name: netops-infra
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: netops
+      POSTGRES_USER: netops
+      POSTGRES_PASSWORD: netops_dev_only
+      # 建库时自动执行 packages/db/schema.sql
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ../packages/db/schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netops -d netops"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  tdengine:
+    image: tdengine/tdengine:3.3.0.0
+    restart: unless-stopped
+    environment:
+      TAOS_FQDN: tdengine
+    volumes:
+      - taos-data:/var/lib/taos
+      - taos-log:/var/log/taos
+      # 建库脚本挂进来，由 deploy/setup.ps1 用 `docker exec ... taos -f` 执行。
+      # （TDengine 镜像不认 postgres 那套 /docker-entrypoint-initdb.d 自动初始化）
+      - ../packages/db/tdengine.sql:/init/tdengine.sql:ro
+    ports:
+      - "127.0.0.1:56030:6030"   # 原生协议
+      - "127.0.0.1:56041:6041"   # REST（应用连这个）
+    healthcheck:
+      test: ["CMD-SHELL", "taos -s 'show databases;' >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # ─────────────────────── AI 引擎（DSH）───────────────────────
+  # 产品的大脑：只读探索、归因、写报告、现场造 Python 工具。
+  #
+  # 网络模式说明（这是踩过的坑）：
+  #   默认用 bridge + 端口映射。因为在 Docker Desktop（Windows）上，
+  #   network_mode: host 绑的是 **WSL2 虚拟机**的网卡，不是 Windows 的 ——
+  #   容器里服务正常（内部 curl 返回 401），但 Windows 浏览器连不上。
+  #   Linux / 树莓派上 host 就是真宿主，那时用 deploy/docker-compose.host-net.yml
+  #   覆盖成 host 网络，才能拿到完整的广播/ARP 发现能力。
+  harness:
+    build:
+      # 上下文是 harness/（不是 service/）——Dockerfile 要同时拿到 profile/ 和 service/
+      context: ../harness
+      dockerfile: service/Dockerfile
+    restart: unless-stopped
+    cap_add: [NET_RAW, NET_ADMIN, NET_BIND_SERVICE]
+    ports:
+      - "127.0.0.1:${NETOPS_DSH_PORT:-3090}:${NETOPS_DSH_PORT:-3090}"
+    environment:
+      DSH_HOME: /data/dsh
+      NETOPS_DSH_PORT: ${NETOPS_DSH_PORT:-3090}
+      NETOPS_DSH_PROFILE: netops
+      NETOPS_SITE: ${SITE_ID:-home-01}
+      NETOPS_EGRESS_IFACE: ${NETOPS_EGRESS_IFACE:-eth0}
+      # bridge 网络下用服务名连数据库（host 网络模式下改成 127.0.0.1:端口）
+      NETOPS_PG_DSN: postgres://netops:netops_dev_only@postgres:5432/netops
+      NETOPS_TD_URL: http://tdengine:6041
+      NETOPS_MQTT_URL: mqtt://mqtt:1883
+    volumes:
+      - dsh-home:/data/dsh
+      # 用户层挂进来，改 cordis.patch.yml 不用重建镜像（容器启动时覆盖）
+      - ../harness/profile:/opt/netops/profile:ro
+      # 宿主机上已登录的模型凭据。挂到 /run/secrets（不是直接挂 $DSH_HOME），
+      # 由入口脚本用 600 权限拷过去 —— DSH 拒绝读属主以外可读的凭据文件，
+      # 而 Windows 挂进来的文件在容器里是 777。
+      - ${DSH_CREDENTIALS_FILE:-./secrets/credentials.yaml}:/run/secrets/dsh-credentials.yaml:ro
+      # 模型自己造的 Python 工具写这里
+      - ../harness/toolbox:/opt/netops/harness/toolbox
+      - ../harness/adapters:/opt/netops/harness/adapters
+    depends_on:
+      postgres: { condition: service_healthy }
+      tdengine: { condition: service_healthy }
+
+  # 消息中间件：**默认不启动**。
+  # 单机部署时采集器直接写数据库就够；等要做「现场小盒子 + 公司集中库」的
+  # 分离部署时再启用：docker compose -f ... --profile mqtt up -d
+  mqtt:
+    image: emqx/emqx:5.8
+    profiles: ["mqtt"]
+    restart: unless-stopped
+    environment:
+      EMQX_NODE__NAME: emqx@netops
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: netops_dev_only
+    volumes:
+      - emqx-data:/opt/emqx/data
+    ports:
+      - "127.0.0.1:51883:1883"
+      - "127.0.0.1:58083:18083"
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pg-data:
+  taos-data:
+  taos-log:
+  emqx-data:
+  dsh-home:
