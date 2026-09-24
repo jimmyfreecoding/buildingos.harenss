@@ -1,9 +1,9 @@
-# BuildingOS IOC 重构技术方案 · 执行稿 v2
+# BuildingOS IOC 重构技术方案 · 执行稿 v2.1
 
 > 状态：**执行稿**（v1 评审稿 + 两份评审意见的合并修订）。第 2 节决策和第 11 节阶段计划按本稿执行；第 12 节剩余问题在 V0 验证阶段内关闭。
 > 日期：2026-09-24
 > 单一来源：`buildingos.ioc/docs/TECH-PLAN.md`。`buildingos.harenss/docs/design/TECH-PLAN-ioc-harness.md` 是同内容副本；以后改动只改 ioc 仓库，再同步副本（V0-0 把两份纳入 git，并加 sha256 一致性检查）。
-> v1 → v2 的修改逐条记在附录 A「评审意见处理表」里。
+> v1 → v2 的修改逐条记在附录 A「评审意见处理表」里。v2 → v2.1：写入 V0 验证结论（第 13 节，报告见 `docs/V0-REPORT.md`），并修正受影响的条目。
 
 | 仓库 | 在本方案中的角色 |
 |---|---|
@@ -63,7 +63,7 @@
 | K12 | **IOC 前端唯一来源是 buildingos.ioc**。harenss 的 `apps/web` 在 P0 删除；harenss 的 CI 禁止再出现 `ioc.config.js` 和 `src/core/spec/` | 两份评审 |
 | K13 | 内容块双轨：**结构化块**（`metric / list / ring / line / progress / text / table`，ARCHITECTURE §10 路线 B）承担没有 AI 时的可视化编辑；**HTML 块**是 AI 直出通道。两者都是布局里的一个 box | DeepSeek §4-§5 问题 2，并保留产品负责人「AI 直接生成 HTML」的要求 |
 | K14 | 样式注入：HTML 块和结构化块都在 Shadow DOM 中渲染。令牌层（CSS 变量）天然穿透；**工具类和主题 skin 编译成 `CSSStyleSheet`，通过 `adoptedStyleSheets` 注入每个 shadow root** | DeepSeek B2 |
-| K15 | 身份授权从 **P3 开始**就生效。宿主的 `JwtAuthGuard` 挂在所有写接口上。「名单选人」只在本机演示模式下可用（只监听回环地址） | 两份评审 |
+| K15 | 身份授权从 **P3 开始**就生效。所有写接口都要求宿主签发的 JWT，由 apps/ioc 用与宿主相同的密钥自行校验（V0-5）。「名单选人」只在本机演示模式下可用（只监听回环地址） | 两份评审 |
 | K16 | 实时推送改用 **SSE**（宿主已有先例）。`local_module` 模式下子应用没有独立的 HTTP server，所以不做 WebSocket | DeepSeek B4 |
 | K17 | 业务数据由**领域数据服务**负责（netops → netops-api；iot → buildingos.ai 的数据接口）。apps/ioc 只做项目、呈现和查询编排，不直接连业务库 | ChatGPT 5 |
 | K18 | **AI 不写 SQL**。具名查询只能引用领域服务预先注册的查询模板，AI 只填参数 | DeepSeek B6 |
@@ -194,7 +194,9 @@ v1 写的是「同材质槽全局合并」。这会破坏现有按 mesh 的拾�
 因此：
 
 - **识别**：文件头不是 `PK` 且内容是 Base64 文本 → 按 AES-256-CBC 解密。默认 key 和 IV 取自 webmap 的 `cryptoHandle.js`，可以通过参数覆盖。版本号读取 `MAP_VERSION`。
-- **根对象的 `iv` 字段**：23F 中值为 `[0,0]`，与 webmap `generate_acmap.js` 里紧挨 `center` 的同名字段形态一致，**判断为坐标偏移，不是加密 IV**。V0-1 用更多样本确认；如果不同样本出现非零值，就按偏移量处理。
+- **根对象的 `iv` 字段**：**已确认是楼栋平面偏移**，不是加密 IV（旧源码 `Object3D.js:155-173` 用它设置 `building.position.x/z`；全部样本都是 `[0,0]`）。
+- **两代元数据**（V0-1）：1.3.1（`MAP_VERSION`、`iv`、`extremums`…）和 1.0.0（`version`、`createTime`），加载器用 `normalizeV1` 统一。
+- **与 1.3.0 的样式差异**（V0-1，P1 移植）：`sType 1002` 画成平面；材质不关闭 depthTest；Map 级 `opacity` 配置；房间名称标签和图标。
 - **图层覆盖**：第一批支持 `floor room wall door window logo seat desk furniture`，按 23F 的实际图层排序。未知图层记录告警，不中断加载。
 - **几何**：移植 webmap 旧 ESM 源码 `src/acmap/core/Object3D.js` 的拉伸和合并逻辑。它用到的 `Geometry.vertices/faces`、`ExtrudeGeometry` 在 r115 中都还有。
 - **一致性基准**：旧 ESM 源码目前无人引用，线上交付走的是 AirocovMap 1.3.0 的 UMD 包（内嵌 r122，没有源码）。**验收以 AirocovMap 1.3.0 在同一机位的实测截图为基准**，不以旧源码为准。
@@ -243,6 +245,42 @@ v.capabilities();                   // 当前模型支持的能力列表
 | 4 回落默认值 | 保留（材质槽） |
 | 5 AI 只有一个写口 | 升级为「一个写入关口」，AI 和人工的写入都走同一个关口（7.4） |
 | 6 style-dump | 保留 |
+
+### 4.10 新模型的生产方式（K20）
+
+现有的程序化模型（如 `createSmartCampus.js`「参考照片制作」）本来就是「看图写代码」生产出来的。重构后把这种方式固化成一份规范，以后新楼宇都走同一条路：
+
+```
+《模型编写规范》 + 效果图 + CAD（图纸截图 / PDF / 标注尺寸）
+        │  交给大模型
+        ▼
+models-src/<id>/buildModel.js  +  semantics 片段  +  site 元数据
+        │  acmap build（无头浏览器）
+        ▼
+<id>.acmap  →  acmap inspect  →  perf-scene / interact-scene  →  人工看效果
+        │  不通过：把报告回给大模型修改
+        ▼
+入库，发布
+```
+
+**交付物**：`docs/MODEL-AUTHORING-SPEC.md`（《模型编写规范》）。**在 P1 完成 Smart 重构之后，从实际跑通的 Smart 代码中总结出来**，而不是先写。规范至少包括：
+
+| 章节 | 内容 |
+|---|---|
+| 输入清单 | 大模型需要的材料：效果图（至少主视角 + 俯视角）、CAD（总平面、各层平面、立面，标出尺寸和层高）、楼栋 / 楼层 / 房间清单、要点击的对象清单；缺什么时怎么估算、怎么标注「估算」 |
+| `buildModel()` 契约 | 函数签名、返回结构、禁止事项（不建 renderer、不碰 DOM、不启循环）、固定随机种子、资源释放 |
+| 坐标与单位 | 米、y 轴向上、原点和朝向的约定；CAD 尺寸怎么换算 |
+| 语义命名 | 楼栋 / 楼层 / 房间 / 设备 id 的命名规则（与 4.2 的命名空间一致）、`node.name = <语义id>\|<槽名>` |
+| 材质槽 | 可用槽名清单、每个槽的视觉含义、什么时候用预设库（幕墙、反射） |
+| 合并与拾取 | 4.4 的合并键规则、节点数上限、哪些对象必须可拾取 |
+| 实例、路径、行为 | 树、车等重复对象怎么写 `instances`；车流路径怎么写 `paths` 和 `behaviors` |
+| 标签与机位 | `anchors` 的写法、默认机位和命名机位 |
+| 室内楼层 | 室内覆盖层的建模粒度（墙、房间、门窗、家具到什么程度） |
+| 性能预算 | draw call、三角形数、包体积上限 |
+| 验收 | `acmap build` / `inspect` / 性能与交互脚本全部通过，加一张与效果图同机位的对比截图 |
+| 示例 | Smart 园区的完整 `buildModel.js` 作为范例；一段可以直接使用的提示词模板 |
+
+规范同时作为 DSH 的一个技能（`model-author`）提供，以后可以在 studio 里上传效果图和 CAD，由 AI 生成模型草稿（放在 P1 之后的扩展，不进当前阶段）。
 
 ---
 
@@ -341,7 +379,8 @@ v.capabilities();                   // 当前模型支持的能力列表
 ### 7.2 身份与授权（K15）
 
 - 服务端**授权上下文** `AuthCtx = { userId, projectId, domain, sessionId?, draftId?, ops[] }`。REST、SSE 订阅、预览地址和 MCP 调用**都校验这个上下文**；不信任请求体里的项目 id，也不信任模型传进来的项目 id。
-- 写接口挂宿主的 `JwtAuthGuard`（`src/server/auth/guards/jwt-auth.guard.ts`）。宿主没有全局 `APP_GUARD`，所以要逐个显式挂上。
+- apps/ioc 内置 `IocAuthGuard`，用宿主 auth 模块的同一密钥（`JWT_SECRET`，默认 `BuildingOS`）校验宿主签发的 JWT；不复用宿主的 passport 策略，因为子应用可能解析到另一个 passport 实例（V0-5）。宿主没有全局 `APP_GUARD`，所以 guard 要在 apps/ioc 的控制器上显式挂上。
+- SSE 订阅无法带请求头，允许 GET 时用 `?access_token=`，日志必须脱敏；P3 可改为 fetch 读流，这样就能带请求头。
 - 本机演示模式（`IOC_DEMO=1`）：名单选人、免登录，**只监听回环地址**，启动时打印警告。
 - 预览地址带短时签名 token，绑定 `projectId + draftId`，15 分钟过期。
 - S3 的 `scene_command`：要校验授权（观看端不能发指令）、限频（初始每个会话每秒 2 次），并按项目隔离广播。
@@ -454,9 +493,11 @@ dsh-ioc 镜像额外包含：Chromium 和 Playwright 的依赖（`@playwright/mc
 
 **会话绑定**：服务 token 只证明「这是 dsh-ioc 容器」。**每次调用属于哪个项目和草稿**，由会话绑定来确定：
 
-1. apps/ioc 创建 AI 会话时生成 `AuthCtx`，登记 `sessionId → AuthCtx`，再经 gateway 发起 DSH 会话；
-2. MCP 调用时，apps/ioc 通过 DSH 传给 MCP 的会话标识找回 `AuthCtx`；
-3. **V0-4 要确认 DSH 的 mcp-client 是否会把会话标识传给 MCP server。** 如果不会，退路是：gateway 为每个会话下发一个一次性短 token，模型调用写工具时带上这个参数。token 只绑定一个草稿，15 分钟过期，会话结束即作废。这样即使模型看到 token，也只能写自己的草稿。
+V0-4 实测：DSH 的 mcp-client **不会**把会话标识传给 MCP server（请求头只有静态配置，`_meta` 为空）。因此采用**「一个 AI 会话一个 DSH 运行时进程 + 进程级 token」**：
+
+1. apps/ioc 创建 AI 会话时生成 `AuthCtx`（`userId + projectId + draftId + ops`），签发一个 15 分钟、可续期的会话 token；
+2. gateway 为这个会话启动独立的 DSH 运行时进程，把 token 写进该进程专用的 secrets 文件（`IOC_MCP_TOKEN_FILE`），profile 的 `headers` 在启动时读取；
+3. MCP 调用携带这个 token，apps/ioc 用它找回 `AuthCtx`。**模型全程看不到 token，工具参数里也不需要传。**
 
 **可观测性**：gateway 的 `/v1/capabilities` 暴露 MCP 连接状态；studio 显示「AI 写入通道：可用 / 不可用」。MCP 断开时，写工具会消失，这个状态必须可见，不能静默降级。
 
@@ -523,8 +564,9 @@ scripts/                           现有 5 个脚本 + perf-scene / interact-sc
 
 | 风险 | 概率/影响 | 应对 |
 |---|---|---|
-| DSH 对外会话接口不可用（按 DSH 文档，Remote 只负责一元调用，事件流是内部 Connection 协议） | 中/高 | V0-4 最先做；退路是 Python SDK 或 CLI 的 headless 模式，由 gateway 自己实现事件流 |
-| MCP 拿不到会话标识 | 中/中 | 8.4 的一次性短 token 退路 |
+| DSH SDK 运行时缺少 cancel / resume（V0-4 实测只有 initialize、session/prompt、shutdown） | 已确认/中 | 取消靠结束会话进程，续接由 gateway 记录事件日志；向上游反馈，web profile 的 Connection 协议作为后续评估项 |
+| 每个会话一个进程的资源开销（约 1.4 s 启动、约 315 MB 内存） | 已确认/中 | 按内存设并发上限并排队（D13）；会话空闲超时回收；预热一个空闲进程 |
+| MCP 拿不到会话标识 | 已确认/低 | 8.4 的进程级 token（已验证） |
 | 合并后拾取和高亮回归 | 中/高 | 4.4 的合并键和 `pick.bin`；交互回归用例是验收门槛 |
 | v1 的渲染与 AirocovMap 不一致 | 高/中 | 以 1.3.0 的截图为基准，按图层逐步对齐 |
 | 烘焙后体积大 | 中/中 | 合并、实例化、Draco、体积预算；不达标就退回 procedural |
@@ -550,7 +592,7 @@ scripts/                           现有 5 个脚本 + perf-scene / interact-sc
 |---|---|---|---|---|
 | **V0 验证** | 全部 | 见 11.2，共 6 项 | —— | 2 周 |
 | **P0 契约冻结** | ioc、buildingos、harenss | `ioc-contracts`（Schema、catalogue、html-lint 初版，双格式构建）；apps/ioc 的 OpenAPI；C1/C2/C3/F 的 HTTP 契约；7.1 的脚手架修正；删除 harenss 的 `apps/web`；计划文档纳入 git。**不做大规模目录搬迁** | V0 | 1 周 |
-| P1 模型 | ioc | `buildModel()` 拆分（先做 Smart）；Viewer；能力矩阵；v2 编译（无头浏览器）；`pick.bin`；v1 解析转几何（从 P5 提前到这里）；性能和交互门槛 | P0 | 3 周 |
+| P1 模型 | ioc | `buildModel()` 拆分（先做 Smart）；Viewer；能力矩阵；v2 编译（无头浏览器）；`pick.bin`；v1 解析转几何（从 P5 提前到这里）；性能和交互门槛；**从 Smart 总结出《模型编写规范》（4.10），并用它让大模型重建一栋小楼验证可用** | P0 | 3.5 周 |
 | P2 页面 | ioc | 页面模型；结构化块 v1；HTML 块宿主和样式注入；校验和 XSS 用例；player；导出（manifest、内核对齐）；`migrate-legacy` | P0（可以与 P1 并行，模型先用 procedural） | 3 周 |
 | P3 服务 | buildingos | ProjectStore 事务；授权（K15）；REST、SSE、静态托管；导出绑定修订号 | P0（可以与 P1、P2 并行） | 2 周 |
 | P4 AI 闭环 | harenss + buildingos + ioc | gateway；dsh-ioc；MCP 和会话绑定；studio 的 AI 面板；**studio 的用户和项目管理界面**（v1 没有归属，现在归 P4，仓库是 ioc） | P2、P3、V0-4 | 2.5 周 |
@@ -588,12 +630,31 @@ Smart → 吉行（包括 `jixing-twin`）→ relian → houston；另外**在 P
 
 | # | 问题 | 当前倾向 | 在哪里关闭 |
 |---|---|---|---|
-| O1 | gateway 与 DSH 之间走 Connection 协议，还是走 SDK / CLI headless | 看 V0-4 的结论 | V0-4 |
-| O2 | MCP 会话绑定用哪种方式 | 优先让 DSH 传会话标识，否则用短 token | V0-4 |
-| O3 | 交付 exe 的 Chromium 版本 | —— | V0-3 |
+| O1 | gateway 与 DSH 之间走 Connection 协议，还是走 SDK / CLI headless | **已关闭**：SDK 运行时，JSON-RPC over stdio，一个会话一个进程（gateway 用 Node 实现这套协议） | V0-4 ✅ |
+| O2 | MCP 会话绑定用哪种方式 | **已关闭**：进程级 token（模型不可见） | V0-4 ✅ |
+| O3 | 交付 exe 的 Chromium 版本 | **已关闭**：exe 是静态服务器 + 系统默认浏览器（开发机为 Chrome 153），构建目标维持 `chrome90` | V0-3 ✅ |
 | O4 | probe 的语言（Node 还是按 M0 用 Python 重写） | 交 harenss 负责人 | P0 |
 | O5 | buildingos.ai 的数据获取规范 | 等产品负责人提供 | P8 之前 |
 | O6 | 各阶段的负责人和人力 | 在 V0 启动会上确定 | V0 |
+
+---
+
+## 13. V0 验证结论（2026-09-24）
+
+完整报告：`docs/V0-REPORT.md`；验证代码在三个仓库的 `refactor/v0` 分支（ioc：`spikes/v0/`；harenss：`spikes/v0-gateway/`；buildingos：`spikes/v0-ioc-mount/`）。
+
+| 项 | 结论 | 对计划的影响 |
+|---|---|---|
+| V0-0 | 计划纳入 git，`scripts/check-plan-sync.mjs` 校验正本与副本一致 | —— |
+| V0-1 v1 兼容 | 40 个样本中 39 个能解密；两代元数据；`iv` 是楼栋偏移；几何与 1.3.0 一致；样式有 4 处差异；`极企展厅.acmap` 会让 1.3.0 报错，本加载器能读，但坐标分布异常 | 4.6 已更新 |
+| V0-2 Smart 编译 | 现有程序化代码**已经按材质合并**（80 次 draw call，而不是 v1 所说的约 1000）；编译后 27 次（-66%），三角形不变，画面一致；拾取、高亮、显隐可用；**B 楼部分构件没有语义归属** | 4.1 的问题描述以此为准；4.7 的 draw call 门槛可以达到；《模型编写规范》要求每个 mesh 都有语义归属，编译器报告无归属的对象 |
+| V0-2 体积 | glb 14.2 MB → weld + Draco 1.0 MB | 4.7 的首屏预算以压缩后为准；编译器默认执行 weld + Draco |
+| V0-2 帧耗时 | 云端只有软件渲染，无法判断 | `perf-scene.mjs` 必须在开发机的真实 GPU 上运行 |
+| V0-3 离线包 | 开发机（exe + Chrome 153 + Radeon 780M）10 项自检全过：Draco 模型可见首帧 759 ms，HTML 块、data-bind、data-action、Worker 正常，无外网请求 | 第 6 节成立；exe 端口随机，离线包不依赖浏览器存储 |
+| V0-4 DSH | SDK 运行时 + MCP（streamable-http）端到端打通；MCP 不带会话标识；SDK 没有 cancel / resume；单进程约 1.4 s 启动、约 315 MB 内存；MCP 不可用时启动直接失败 | 8.4 已更新（O1、O2 关闭）；风险表已更新 |
+| V0-5 宿主挂载 | 按宿主 module-loader 的方式挂载，与独立进程两种模式下 REST、SSE、JWT、静态托管、路径校验结果一致；没有双重前缀 | K15、7.2 已更新；**在真实宿主上挂载**列为 P3 第一项 |
+
+**V0 通过，进入 P0。**
 
 ---
 
@@ -624,7 +685,7 @@ Smart → 吉行（包括 `jixing-twin`）→ relian → houston；另外**在 P
 | # | 意见 | 处理 | 落点 |
 |---|---|---|---|
 | §0 | 附件版与仓库版不一致；没有纳入 git | 采纳。本稿覆盖两份副本 | 抬头、V0-0 |
-| 2.2-1 | webmap 没有 DXF 链 | 采纳（核实属实） | 4.6 |
+| 2.2-1 | webmap 没有 DXF 链 | 采纳（核实属实）。产品负责人确认 DXF 链是失败的工具链，不考虑；新模型改为规范驱动的大模型建模 | K20、4.6、4.10 |
 | 2.2-2 | 图层清单不全（23F 有 floor/seat/desk） | 采纳（核实属实） | 4.6 |
 | 2.2-3 | 根对象没有 `version`，版本号是 `MAP_VERSION` | 采纳（核实属实，值为 1.3.1） | 4.6 |
 | 2.2-4 | 根对象的 `iv` 字段意味着文件自带 IV | **不采纳结论，采纳核实动作**。23F 中 `iv=[0,0]`，与 webmap 生成脚本中紧挨 `center` 的同名坐标字段一致，判断为坐标偏移，不是 AES IV；V0-1 用更多样本确认 | 4.6、V0-1 |
@@ -668,8 +729,8 @@ Smart → 吉行（包括 `jixing-twin`）→ relian → houston；另外**在 P
 | webmap `src/acmap/core/Object3D.js` | 拉伸和合并（旧 ESM，无人引用） | 4.6 | 已核实；不作为一致性基准 |
 | webmap `public/airocov/AirocovMap.js` 1.3.0（r122） | 线上引擎 | v1 验收基准 | 已核实 |
 | webmap `src/acmap/core/MapData.js` | 主题的目录和文件双形式 | 4.5 | 已核实 |
-| webmap `GlbToAcmapConverter.js` | GLB → acmap | 室内图生产 | 已核实 |
-| webmap DXF 链 | —— | —— | **不存在** |
+| webmap `GlbToAcmapConverter.js` | GLB → acmap | 备用（拿到外部 GLB 时） | 已核实 |
+| webmap DXF 链 | —— | 不考虑（失败的工具链） | 已排除 |
 | ioc `src/scene/SceneHost.js` | 能力机制（未声明的方法不存在） | 4.2 | 已核实 |
 | ioc `createCampus.js`、`createSmartCampus.js`、`createDesignCenterFloor.js` | 拾取、高亮、合并现状 | 4.4 | 已核实 |
 | ioc `CLAUDE.md` | 硬约束 1–6、演示模式规则、skin 说明 | 4.9、5.2、5.4 | 已核实 |
