@@ -1,6 +1,8 @@
 # 接口契约（CONTRACTS）
 
 > 这些是**冻结的边界**。改任何一个都要同步改 `packages/contracts`。
+>
+> **2026-09-24 修订**（IOC TECH-PLAN 8.8）：B 节工具头增加 `domain`、`level`；C 节改为多域 harness-gateway，新增 C4（gateway ↔ DSH）；新增 F 节（具名查询）。
 
 ---
 
@@ -44,6 +46,8 @@ harness/toolbox/h3c_get_channel.py
 ```python
 """@tool
 name: h3c_get_channel
+domain: netops            # 2026-09-24 新增：所属业务域（ioc / iot / netops），注册器按域加载
+level: read               # 2026-09-24 新增：read | draft | write；M0–M2 与 iot 域只允许 read
 description: 读取 H3C AP 当前 2.4G / 5G 信道
 params:
   host: {type: string, required: true, desc: 管理地址}
@@ -78,13 +82,18 @@ if __name__ == "__main__":
 
 ---
 
-## C · harness-service（api ↔ harness）
+## C · harness-gateway（调用方 ↔ harness）
+
+> 2026-09-24 修订：原「harness-service」改为多域的 **harness-gateway**（端口 8090，新分配）。
+> 调用方：buildingos/apps/ioc（domain=ioc）、netops-api（domain=netops）、以后的 iot 服务（domain=iot）。
+> 所有请求增加 `domain` 字段；gateway 按 domain 路由到对应的 DSH 容器。
 
 ### C1 任务（批处理，非交互）
 
 ```
 POST /v1/tasks
 {
+  "domain": "netops" | "iot" | "ioc",
   "type": "explain_anomaly" | "draft_change" | "generate_adapter" | "write_report" | "guide",
   "site_id": "home-01",
   "inputs": { ... },                       // 按 type 定义
@@ -101,6 +110,8 @@ GET  /v1/tasks/{id}
 
 GET  /v1/tasks/{id}/events?since=<cursor>     // SSE
    event: thinking | tool_call | tool_result | message | artifact | done | error
+   // artifact.kind（2026-09-24 扩充）：tool_source | finding | query | ioc.patch | ioc.block
+   // 每个事件带单调递增的 seq；?since=<seq> 断线续接（gateway 记录事件日志，见 C4）
 
 POST /v1/tasks/{id}/cancel  → 202
 ```
@@ -129,6 +140,8 @@ POST /v1/tasks/{id}/cancel  → 202
 
 ```
 POST /v1/sessions                       → { "session_id": "ses_..." }
+{ "domain": "ioc", "auth_ctx": { "user_id": "7", "project_id": "demo", "draft_id": "d1", "ops": ["read", "draft"] } }
+// auth_ctx 由调用方给出，gateway 据此为该会话签发会话 token（见 C4），模型不可见
 POST /v1/sessions/{id}/messages
 {
   "text": "这台为什么卡？",
@@ -136,6 +149,7 @@ POST /v1/sessions/{id}/messages
 }
 → 202
 WS   /v1/sessions/{id}/stream           // 事件同 C1
+POST   /v1/sessions/{id}/cancel         → 202（结束该会话的运行时进程，已产生事件保留）
 DELETE /v1/sessions/{id}
 ```
 
@@ -151,6 +165,20 @@ GET /v1/capabilities
 ```
 
 前端在设置页直接渲染这个，用户一眼看到"哪些能力不可用"。
+
+---
+
+### C4 gateway ↔ DSH（2026-09-24 新增，V0-4 验证）
+
+- 运行方式：gateway 为每个 AI 会话启动一个 DSH **SDK 运行时**进程（`dsh --profile sdk` + 该域的 patch），
+  通过 stdio 上的 JSON-RPC 通信。只用三个方法：`initialize`、`session/prompt`、`shutdown`；
+  通知：`session.event`（带 `seq` 的事件）、`session.status`（`idle` 表示一轮结束）。
+- 会话 token：gateway 生成绑定 `auth_ctx` 的短期 token（15 分钟，可续期），写入该进程专用的 secrets 文件；
+  profile 中 `@deepseek-ai/dsh-mcp-client` 的 `headers` 启动时读取。MCP 调用不携带会话标识（实测），
+  因此由「一个会话一个进程 + 进程级 token」完成绑定。
+- 取消：结束进程。续接：gateway 按 `seq` 记录事件日志，给调用方补发；进程重启后以新会话 + 前情摘要继续。
+- 资源：单进程约 1.4 s 启动、约 315 MB 常驻（V0-4 实测），按内存设并发上限并排队（D13）。
+- MCP 端点不可用时，profile 设 `failOnStartupError: true`，运行时启动失败并返回明确错误，不静默降级。
 
 ---
 
@@ -176,3 +204,45 @@ harness 返回的 `result` 由 `worker` 落 PG：
 - `generate_adapter` → 写文件到 `toolbox/`，并登记 `tool_artifacts`
 
 **所有 LLM 产出的结论都必须带 `evidence[]`**，否则 `worker` 拒收（保证可审计）。
+
+---
+
+## F · 具名查询（2026-09-24 新增，iot / netops 共用）
+
+**AI 不写 SQL。** 查询模板在领域数据服务里注册；AI 和页面只引用模板 id 并填参数。
+
+### F1 模板注册（领域服务内部）
+
+```json
+{
+  "id": "device.list",
+  "domain": "netops",
+  "description": "按网段列出设备",
+  "params":  { "type": "object", "properties": { "cidr": { "type": "string" } }, "required": ["cidr"] },
+  "result":  { "type": "array", "items": { "type": "object" } },
+  "permission": "netops:read",
+  "limits":  { "rows": 5000, "timeoutMs": 5000, "maxRange": "90d" },
+  "cacheTtl": "30s",
+  "subscribe": false,
+  "offline": "snapshot"
+}
+```
+
+### F2 目录与执行（领域服务对 apps/ioc 暴露）
+
+```
+GET  /catalog/queries                    → 模板目录（apps/ioc 转给 get_catalog 与 studio）
+POST /query/run  { template, params }    → { rows, schema, executedAt }
+GET  /query/subscribe?template=&params=  → SSE（仅 subscribe=true 的模板）
+```
+
+错误码：`E_PARAM`、`E_FORBIDDEN`、`E_LIMIT`、`E_TIMEOUT`、`E_UPSTREAM`。
+领域授权在领域服务内完成；apps/ioc 只校验 AuthCtx 并代理（`POST /ioc/query/run`，见 apps/ioc `docs/openapi.yaml`）。
+
+### F3 页面里的引用（ioc 侧，见 @buildingos/ioc-contracts 的 `query-ref.v1`）
+
+```json
+{ "domain": "netops", "template": "device.list", "params": { "cidr": "10.0.0.0/24" }, "refresh": "60s" }
+```
+
+导出离线包时每个引用执行一次，结果冻结为 `snapshot`，并记录执行时间。

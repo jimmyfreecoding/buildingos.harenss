@@ -1,6 +1,9 @@
 # buildingos.harenss
 
-**网络治理 AI 项目。**
+**harness 平台 + 网络治理（netops）产品。**
+
+> 2026-09-24 起，本仓库的 `harness/` 升级为多个业务域（ioc / iot / netops）共用的 harness 平台，呈现统一走 `buildingos.ioc`。
+> 决策见 `docs/design/DECISIONS.md` D1、D12、D14、D15；总体方案见 `docs/design/TECH-PLAN-ioc-harness.md`。
 
 一台小盒子插进客户网络，自己把网络摸清楚——有哪些设备、连得好不好、哪里有问题——然后跟人对话解释、出报告、给建议。覆盖有线、无线、摄像头、门禁、智能设备五类。
 
