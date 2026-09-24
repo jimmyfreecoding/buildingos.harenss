@@ -1,0 +1,11 @@
+# V0-4：给 sdk profile 接上 ioc 的 MCP 端点（对应 TECH-PLAN 8.4）
+- insert:
+    - id: ioc-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ioc
+        transport: streamable-http
+        url: http://127.0.0.1:3940/ioc/mcp
+        headers:
+          Authorization: !!js ('Bearer ' + process.getBuiltinModule('node:fs').readFileSync(process.env.IOC_MCP_TOKEN_FILE, 'utf8').trim())
+        failOnStartupError: true
