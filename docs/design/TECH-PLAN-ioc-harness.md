@@ -60,7 +60,7 @@
 
 | 编号 | 决策 | 来源 |
 |---|---|---|
-| K12 | **IOC 前端唯一来源是 buildingos.ioc**。harenss 的 `apps/web` 在 P0 删除；harenss 的 CI 禁止再出现 `ioc.config.js` 和 `src/core/spec/` | 两份评审 |
+| K12 | **IOC 前端唯一来源是 buildingos.ioc**。harenss 的 `apps/web` **冻结**（只允许修复性改动），其中唯一的 netops 专有组件 `HealthCheck.vue` 在 P7a 迁入 ioc 后整体删除（P0 执行时发现该目录有未提交的改动且含 netops 专有组件，故由「P0 删除」改为「冻结 + P7a 删除」，见 harenss DECISIONS D14） | 两份评审 |
 | K13 | 内容块双轨：**结构化块**（`metric / list / ring / line / progress / text / table`，ARCHITECTURE §10 路线 B）承担没有 AI 时的可视化编辑；**HTML 块**是 AI 直出通道。两者都是布局里的一个 box | DeepSeek §4-§5 问题 2，并保留产品负责人「AI 直接生成 HTML」的要求 |
 | K14 | 样式注入：HTML 块和结构化块都在 Shadow DOM 中渲染。令牌层（CSS 变量）天然穿透；**工具类和主题 skin 编译成 `CSSStyleSheet`，通过 `adoptedStyleSheets` 注入每个 shadow root** | DeepSeek B2 |
 | K15 | 身份授权从 **P3 开始**就生效。所有写接口都要求宿主签发的 JWT，由 apps/ioc 用与宿主相同的密钥自行校验（V0-5）。「名单选人」只在本机演示模式下可用（只监听回环地址） | 两份评审 |
@@ -451,7 +451,7 @@ AI 负责搭建，数据流动不经过 AI；结论必须带 `evidence[]`（hare
 | `harness/profile|skills|prompts|rules|knowledge` | 移到 `harness/domains/netops/` |
 | —— | `harness/core/`：toolbox-registrar、evidence-guard、credential-ref、draft-gate |
 | —— | `harness/domains/ioc/`、`harness/domains/iot/` |
-| `apps/web`（IOC 前端的逐字节副本，118 个文件） | **删除**（K12） |
+| `apps/web`（IOC 前端的逐字节副本，118 个文件，另有 netops 专有的 `HealthCheck.vue`） | **冻结**，P7a 迁出 `HealthCheck.vue` 后删除（K12） |
 | `apps/probe`（Node/JS） | 不在 ioc 范围内。MILESTONES M0 写的是「Python 重写」，和现状不一致，**交 harenss 负责人确认**：改 M0 描述，或者按计划重写 |
 | `apps/api`、`apps/worker` 不存在 | 新增 `apps/netops-api`（领域数据服务，K17），P7b 交付 |
 | `packages/contracts` 不存在（CONTRACTS.md 要求有） | 新增。承载 C、F 两节的 JSON Schema；ioc 这边的契约由 `@buildingos/ioc-contracts` 提供 |
@@ -591,7 +591,7 @@ scripts/                           现有 5 个脚本 + perf-scene / interact-sc
 | 阶段 | 仓库 | 内容 | 依赖 | 估算 |
 |---|---|---|---|---|
 | **V0 验证** | 全部 | 见 11.2，共 6 项 | —— | 2 周 |
-| **P0 契约冻结** | ioc、buildingos、harenss | `ioc-contracts`（Schema、catalogue、html-lint 初版，双格式构建）；apps/ioc 的 OpenAPI；C1/C2/C3/F 的 HTTP 契约；7.1 的脚手架修正；删除 harenss 的 `apps/web`；计划文档纳入 git。**不做大规模目录搬迁** | V0 | 1 周 |
+| **P0 契约冻结** | ioc、buildingos、harenss | `ioc-contracts`（Schema、catalogue、html-lint 初版，双格式构建）；apps/ioc 的 OpenAPI；C1/C2/C3/C4/F 的契约；7.1 的脚手架修正；冻结 harenss 的 `apps/web`；计划文档纳入 git。**不做大规模目录搬迁** | V0 | 1 周 |
 | P1 模型 | ioc | `buildModel()` 拆分（先做 Smart）；Viewer；能力矩阵；v2 编译（无头浏览器）；`pick.bin`；v1 解析转几何（从 P5 提前到这里）；性能和交互门槛；**从 Smart 总结出《模型编写规范》（4.10），并用它让大模型重建一栋小楼验证可用** | P0 | 3.5 周 |
 | P2 页面 | ioc | 页面模型；结构化块 v1；HTML 块宿主和样式注入；校验和 XSS 用例；player；导出（manifest、内核对齐）；`migrate-legacy` | P0（可以与 P1 并行，模型先用 procedural） | 3 周 |
 | P3 服务 | buildingos | ProjectStore 事务；授权（K15）；REST、SSE、静态托管；导出绑定修订号 | P0（可以与 P1、P2 并行） | 2 周 |
