@@ -7,10 +7,10 @@
 
 | 仓库 | 在本方案中的角色 |
 |---|---|
-| `buildingos.ioc` | **IOC 前端唯一来源**：模型运行时、.acmap 编译、页面框架、studio / player、共享契约包 |
+| `buildingos.ioc` | **IOC 前端唯一来源**：模型运行时、.buildingosmap 编译、页面框架、studio / player、共享契约包 |
 | `buildingos` | NestJS 宿主；新增微服务 `apps/ioc`（存储、事务、导出、MCP、托管前端） |
 | `buildingos.harenss` | harness 平台（DSH 镜像、gateway、三个业务域）+ netops 产品（probe、netops-api） |
-| `buildingos_webmap` | .acmap v1 格式与 AirocovMap 引擎（只参考，不改） |
+| `buildingos_webmap` | 旧格式 .acmap 与 AirocovMap 引擎（只参考，不改） |
 | `deepseek-harness` | DSH 上游（只参考，不改） |
 | `buildingos.ai` | IoT 实时数据（MQTT / TDengine / PostgreSQL）。数据获取规范待提供 |
 
@@ -30,7 +30,7 @@
 
 | # | 场景 | 描述 |
 |---|---|---|
-| S1 | 嵌入模型 | 其他 web 项目引入 `ioc.js`，加载 .acmap（v2 或 webmap v1）和 .acstyle，显示三维楼宇 |
+| S1 | 嵌入模型 | 其他 web 项目引入 `ioc.js`，加载 .buildingosmap（或兼容导入 webmap 的旧格式 .acmap）和 .acstyle，显示三维楼宇 |
 | S2 | 编排展示 | 选用户 → 选择或新建项目 → 可视化编排 + AI 对话 → 保存 → 导出 `web.zip`，用已有的本地浏览器 exe 离线运行 |
 | S3 | 在线大屏 | S2 的大屏项目不导出，直接通过 URL 访问；语音或文字与 AI 交互，实时改变显示内容 |
 
@@ -45,7 +45,7 @@
 | 编号 | 决策 |
 |---|---|
 | K1 | 模型采用「共用运行时 + 独立模型文件」。渲染性能不低于现在的程序化版本，衡量指标见 4.7 |
-| K2 | 新格式为 .acmap v2；运行时兼容 webmap 的加密 .acmap v1；v2 不强制加密 |
+| K2 | 新格式为 **.buildingosmap**（K21）；运行时兼容导入 webmap 的加密 .acmap；新格式不强制加密 |
 | K3 | 本地浏览器 exe 已完成；本方案只保证导出的 `web.zip` 在它上面能运行（要记录它的 Chromium 版本，见第 6 节） |
 | K4 | ioc 后端是 `buildingos/apps/ioc`，遵循宿主的微服务规范（按宿主实际实现做修正，见 7.1） |
 | K5 | 第一版用文件存储，不用 Git；**但必须具备事务语义**（见 7.3） |
@@ -68,7 +68,9 @@
 | K17 | 业务数据由**领域数据服务**负责（netops → netops-api；iot → buildingos.ai 的数据接口）。apps/ioc 只做项目、呈现和查询编排，不直接连业务库 | ChatGPT 5 |
 | K18 | **AI 不写 SQL**。具名查询只能引用领域服务预先注册的查询模板，AI 只填参数 | DeepSeek B6 |
 | K19 | 共享契约包 `@buildingos/ioc-contracts` 同时输出 ESM、CJS 和 `.d.ts`。开发时用 `file:` 引用，交付用固定版本的 tarball，版本号记在消费方的 lockfile 里 | 两份评审 |
-| K20 | **新楼宇模型的生产方式 = 规范驱动的大模型建模**：把《模型编写规范》、效果图和 CAD 一起交给大模型，由它写出 `models-src/<id>/buildModel.js`，再用 `acmap build` 编译、验收。webmap 的 DXF→acmap 工具链已经失败，**不考虑**；GLB→acmap 也不作为主路径 | 产品负责人 |
+| K20 | **新楼宇模型的生产方式 = 规范驱动的大模型建模**：把《模型编写规范》、效果图和 CAD 一起交给大模型，由它写出 `models-src/<id>/buildModel.js`，再用 `bosmap build` 编译、验收。webmap 的 DXF→acmap 工具链已经失败，**不考虑**；GLB→acmap 也不作为主路径 | 产品负责人 |
+| K21 | **模型文件格式定名为 `.buildingosmap`**（zip：manifest + glb + 语义，manifest 里 `format: "buildingosmap"`、`version: 1`）。`.acmap` 只作为旧格式**兼容导入**，不再产出；运行时按文件内容识别格式，不看后缀。编译命令为 `bosmap`（`packages/map-tools`） | 负责人（P1 执行中） |
+| K22 | **Three.js 从 r115 升级到 0.186.1（精确锁定）**。r115 是仓库初始提交带来的，没有必须保留的技术理由；新版 API 是《模型编写规范》和大模型建模的基础，并修复安全通告 GHSA-fq6p-x6j3-cmmq。现有场景通过 `twin-runtime/src/compat.js`（关闭色彩管理 + 灯光 ×π）保持 r115 的画面；是否整体改用物理正确的新设置，留作后续的视觉决策。详见 `docs/THREE-UPGRADE.md` | 负责人（P1 执行中） |
 
 ---
 
@@ -78,7 +80,7 @@
 ┌──────────────────────── 浏览器 ────────────────────────┐
 │ studio（编排 + AI）  player（大屏 / 演示 / 离线）  第三方页面 + ioc.js │
 │        └──── ioc-ui（布局 / 结构化块 / HTML 块 / 主题注入）────┘       │
-│                     └── twin-runtime（Three r115）──┘                  │
+│                     └── twin-runtime（Three 0.186）─┘                  │
 └──────────┬───────────────────────────────────────────────┘
            │ REST + SSE（JWT）          离线 zip：只读静态文件，没有后端
 ┌──────────▼──────── buildingos 宿主进程（Node 22，Express）────────┐
@@ -106,7 +108,7 @@
 现有 `createXxx(container, callbacks, options)` 拆成两部分：
 
 - `buildModel(options) → { root: THREE.Group, semantics, slots, behaviors, dispose }`：纯几何和语义。**不创建 renderer，不操作 DOM，不启动循环**；随机数使用固定种子；所有 mesh 的世界变换在这里定型。
-- `Viewer`（twin-runtime）：负责渲染器（沿用 `sRGBEncoding`、ACES、PCFSoft、像素比上限 1.65）、相机、OrbitControls、灯光环境、拾取、标签、快照、行为插件、资源释放。
+- `Viewer`（twin-runtime）：负责渲染器（`SRGBColorSpace`、ACES、PCF 阴影、像素比上限 1.65；兼容外观见 K22）、相机、OrbitControls、灯光环境、拾取、标签、快照、行为插件、资源释放。
 
 迁移期间 `procedural` provider 在运行时里调用 `buildModel()`；编译器也调用同一个 `buildModel()`。两条路径使用同一份建模代码。
 
@@ -116,7 +118,7 @@
 
 本版改为：Viewer 为**完整能力表里的每一项**都生成方法。不支持的能力是 no-op，返回 `false`；`can()` 的语义保持不变。嵌入 API 的能力名单在 P0 冻结。
 
-| 能力 | procedural（现状） | acmap v2 | acmap v1 | stream | 不支持时 UI 的回落 |
+| 能力 | procedural（现状） | .buildingosmap | 旧格式 .acmap | stream | 不支持时 UI 的回落 |
 |---|---|---|---|---|---|
 | focus / reset / top / orbit / pause / view / labels / studio / environment / snapshots | ✔ | ✔ | ✔ | 部分 | 隐藏按钮 |
 | select | jixing | ✔ | ✔ | 部分 | 不弹楼栋卡 |
@@ -127,18 +129,18 @@
 
 `highlight(ids, style)` 是新能力。目标 id 使用语义 id 的命名空间（`A`、`A-2F`、`A-2F-201`、`dev:<id>`）。`roomHighlight` 保留作为兼容别名，`select` 事件的 payload 统一为 `{id, type, path}`。
 
-### 4.3 .acmap v2
+### 4.3 .buildingosmap
 
 zip 容器（文件头 `PK`）：
 
 ```
-xxx.acmap
-├─ manifest.json    format、version、id、units、up、bounds、home、runtime、entries、hashes
+xxx.buildingosmap
+├─ manifest.json    format（= buildingosmap）、version（= 1）、id、units、up、bounds、home、runtime、entries、hashes
 ├─ scene.glb        主几何
 ├─ semantics.json   语义层
 ├─ pick.bin         （可选）三角形区间 → 语义 id 表，见 4.4
 ├─ bin/*.f32        实例变换
-├─ floors/*.glb | floors/*.acmap（v1）
+├─ floors/*.glb | floors/*.acmap（旧格式，兼容导入）
 └─ thumb.png
 ```
 
@@ -198,16 +200,16 @@ v1 写的是「同材质槽全局合并」。这会破坏现有按 mesh 的拾�
 - **两代元数据**（V0-1）：1.3.1（`MAP_VERSION`、`iv`、`extremums`…）和 1.0.0（`version`、`createTime`），加载器用 `normalizeV1` 统一。
 - **与 1.3.0 的样式差异**（V0-1，P1 移植）：`sType 1002` 画成平面；材质不关闭 depthTest；Map 级 `opacity` 配置；房间名称标签和图标。
 - **图层覆盖**：第一批支持 `floor room wall door window logo seat desk furniture`，按 23F 的实际图层排序。未知图层记录告警，不中断加载。
-- **几何**：移植 webmap 旧 ESM 源码 `src/acmap/core/Object3D.js` 的拉伸和合并逻辑。它用到的 `Geometry.vertices/faces`、`ExtrudeGeometry` 在 r115 中都还有。
+- **几何**：移植 webmap 旧 ESM 源码 `src/acmap/core/Object3D.js` 的拉伸和合并逻辑。它用到的 `Geometry.vertices/faces`、`ExtrudeGeometry` 在 r115 中都还有；实际移植时已全部改写为 `BufferGeometry`，升级到 0.186 后画面不变（K22）。
 - **一致性基准**：旧 ESM 源码目前无人引用，线上交付走的是 AirocovMap 1.3.0 的 UMD 包（内嵌 r122，没有源码）。**验收以 AirocovMap 1.3.0 在同一机位的实测截图为基准**，不以旧源码为准。
 - **v1 只做兼容读取，不作为生产路径**：新楼宇和室内楼层都按 K20 与 4.10 生产。webmap 的 DXF→acmap 是一条失败的工具链，不考虑；GLB→acmap（`GlbToAcmapConverter.js`）只在拿到外部 GLB 时作为备用。
 - **安全说明**：v1 的「加密」只是为了兼容读取。密钥公开在客户端源码里，不构成保密手段。
 
 ### 4.7 编译器与性能验证
 
-**编译环境**：第一版在**受控的无头浏览器**（复用 `verify-ioc.mjs` 的无头 Edge 加调试端口）里执行 `buildModel()` 和 r115 `GLTFExporter`（它依赖 `FileReader` 等浏览器接口）。编译结果需要可复现：同一份源码、同一个种子，得到的 glb 哈希一致。
+**编译环境**：第一版在**受控的无头浏览器**（复用 `verify-ioc.mjs` 的无头 Edge 加调试端口）里执行 `buildModel()` 和 `GLTFExporter`（它依赖 `FileReader` 等浏览器接口）。编译结果需要可复现：同一份源码、同一个种子，得到的 glb 哈希一致。
 
-**Draco**：r115 的 `GLTFExporter` **不支持** Draco，要用外部工具（`gltf-transform`）后处理。运行时和离线包都要附带 DRACOLoader 的解码器文件（wasm 和 js），并写进 `manifest`。
+**Draco**：`GLTFExporter` **不支持** Draco，要用外部工具（`gltf-transform`）后处理。运行时和离线包都要附带 DRACOLoader 的解码器文件（wasm 和 js），并写进 `manifest`。
 
 **性能验证**（每个园区迁移都要通过；不通过就继续用 procedural）：
 
@@ -215,8 +217,8 @@ v1 写的是「同材质槽全局合并」。这会破坏现有按 mesh 的拾�
 |---|---|---|
 | draw call | `renderer.info.render.calls`，固定机位，暂停行为插件 | ≤ 基准 × 0.5 且 ≤ 300 |
 | 帧耗时 | 20 秒内的 p50 和 p95 | p95 ≤ 基准 p95 |
-| 可交互首帧 | 从请求 .acmap 开始，经过下载、解压、解析、GPU 上传，到第一帧可以响应拾取；分冷启动和缓存启动两种，固定限速 | 缓存启动 ≤ 基准；冷启动单独记录，预算在 V0-2 之后确定 |
-| 包体积 | .acmap 总字节数和首屏必需字节数 | 记录，并设预算 |
+| 可交互首帧 | 从请求 .buildingosmap 开始，经过下载、解压、解析、GPU 上传，到第一帧可以响应拾取；分冷启动和缓存启动两种，固定限速 | 缓存启动 ≤ 基准；冷启动单独记录，预算在 V0-2 之后确定 |
+| 包体积 | .buildingosmap 总字节数和首屏必需字节数 | 记录，并设预算 |
 | 内存 | JS 堆和 GPU 估算（`renderer.info.memory`） | ≤ 基准 × 1.2 |
 | 画面 | 分块 SSIM，差异图和基准图入库，差异区域人工确认 | 阈值在 V0-2 实测后确定 |
 | **交互回归** | 拾取楼栋 / 楼层 / 房间、高亮、显隐、楼层切换、explodeFloor、视角保存与还原 | 用例全部通过 |
@@ -225,10 +227,10 @@ v1 写的是「同材质槽全局合并」。这会破坏现有按 mesh 的拾�
 
 ### 4.8 嵌入接口（S1）
 
-`ioc.esm.js` 和 `ioc.umd.js`（全局 `BuildingOSTwin`），内置 Three r115、材质预设库和行为插件；Draco 解码器通过 `decoderPath` 指定。
+`ioc.esm.js` 和 `ioc.umd.js`（全局 `BuildingOSTwin`），内置 Three 0.186、材质预设库和行为插件；Draco 解码器通过 `decoderPath` 指定。
 
 ```js
-const v = await BuildingOSTwin.create('#twin', { model: 'smart.acmap', theme: 'light.acstyle', key, decoderPath });
+const v = await BuildingOSTwin.create('#twin', { model: 'smart.buildingosmap', theme: 'light.acstyle', key, decoderPath });
 v.focus('A');                       // 不支持的能力是 no-op，返回 false
 v.highlight(['A-2F-201']);
 v.on('select', e => e.id);
@@ -241,7 +243,7 @@ v.capabilities();                   // 当前模型支持的能力列表
 |---|---|
 | 1 上层只认名字 | 保留。清单改为**纯数据目录**（第 9 节）加上 provider 动态 import |
 | 2 异步卡片 | 基础块和组件改为全局注册的 Custom Elements |
-| 3 Three r115 | 保留 |
+| 3 Three r115 | **取消**：升级到 0.186.1（K22、`docs/THREE-UPGRADE.md`）；现有场景通过兼容外观保持 r115 的画面 |
 | 4 回落默认值 | 保留（材质槽） |
 | 5 AI 只有一个写口 | 升级为「一个写入关口」，AI 和人工的写入都走同一个关口（7.4） |
 | 6 style-dump | 保留 |
@@ -255,9 +257,9 @@ v.capabilities();                   // 当前模型支持的能力列表
         │  交给大模型
         ▼
 models-src/<id>/buildModel.js  +  semantics 片段  +  site 元数据
-        │  acmap build（无头浏览器）
+        │  bosmap build（无头浏览器）
         ▼
-<id>.acmap  →  acmap inspect  →  perf-scene / interact-scene  →  人工看效果
+<id>.buildingosmap  →  bosmap inspect  →  perf-scene / interact-scene  →  人工看效果
         │  不通过：把报告回给大模型修改
         ▼
 入库，发布
@@ -277,7 +279,7 @@ models-src/<id>/buildModel.js  +  semantics 片段  +  site 元数据
 | 标签与机位 | `anchors` 的写法、默认机位和命名机位 |
 | 室内楼层 | 室内覆盖层的建模粒度（墙、房间、门窗、家具到什么程度） |
 | 性能预算 | draw call、三角形数、包体积上限 |
-| 验收 | `acmap build` / `inspect` / 性能与交互脚本全部通过，加一张与效果图同机位的对比截图 |
+| 验收 | `bosmap build` / `inspect` / 性能与交互脚本全部通过，加一张与效果图同机位的对比截图 |
 | 示例 | Smart 园区的完整 `buildModel.js` 作为范例；一段可以直接使用的提示词模板 |
 
 规范同时作为 DSH 的一个技能（`model-author`）提供，以后可以在 studio 里上传效果图和 CAD，由 AI 生成模型草稿（放在 P1 之后的扩展，不进当前阶段）。
@@ -330,7 +332,7 @@ models-src/<id>/buildModel.js  +  semantics 片段  +  site 元数据
 | `sites/<id>/site.js` 元数据和默认值 | 模型的 `semantics.json`（楼栋、楼层、面积等），加上项目模板里的 `defaults` |
 | `sites/<id>/views.js` 六个态势 | 项目模板的 `pages/*.json`（dashboard 下每个态势一页） |
 | `sites/<id>/data/mock.js` | 项目的 `assets/data/mock.json`（`mock` 数据源） |
-| `sites/<id>/models/*.js` | `models-src/<id>/buildModel.js`，编译成 `.acmap` |
+| `sites/<id>/models/*.js` | `models-src/<id>/buildModel.js`，编译成 `.buildingosmap` |
 | `projects/*-dashboard/project.js`（稀疏覆盖） | 由迁移脚本展开成完整项目：园区默认值 + 覆盖 |
 | `projects/jili-smart-deck/project.js`（`overrides.views` + 逐页机位） | 由迁移脚本转成 `pages/*.json`，机位写入 `scene.camera` |
 | 大屏三块浮层（专题视图、楼栋档案、楼层平面图） | dashboard 外壳保留浮层；deck 下使用 `summary`、`building`、`plan` 三张卡（现状不变） |
@@ -403,7 +405,7 @@ IOC_DATA_DIR/users/{u}/projects/{p}/
 - **写锁**：每个项目一把进程内写锁，用于发布和恢复。多进程部署时改用文件锁，第一版只支持单进程。
 - **导出和恢复**都绑定确定的 `revision`。
 - **路径安全**：所有 id 必须匹配 `^[A-Za-z0-9_-]{1,64}$`；路径归一化后必须位于项目根目录之内。
-- **上传和 zip**：限制单个文件大小、文件数量和解压后总体积（初始值：单文件 200MB，1000 个文件，解压后 1GB）；拒绝 `..` 和绝对路径；.acmap 上传时要校验 manifest 和哈希。
+- **上传和 zip**：限制单个文件大小、文件数量和解压后总体积（初始值：单文件 200MB，1000 个文件，解压后 1GB）；拒绝 `..` 和绝对路径；.buildingosmap 上传时要校验 manifest 和哈希（旧格式 .acmap 只校验能否解密）。
 - **保留策略**：`revisions/` 默认保留最近 50 个版本，加上所有被导出引用过的版本；清理不再被引用的资源。
 
 ### 7.4 写入关口
@@ -535,12 +537,12 @@ ioc：`CLAUDE.md` 硬约束 5、能力表、项目格式的入口。
 
 ```
 packages/
-  ioc-contracts/   纯数据：JSON Schema（project/page/query/acmap manifest/semantics）、
+  ioc-contracts/   纯数据：JSON Schema（project/page/query/buildingosmap manifest/semantics）、
                    catalogue（组件和块的 propsSchema、布局、主题元数据、能力名单、数据槽），
                    validate / patch / serialize / migrate、html-lint 规则表；不依赖 Vue 和 Three；ESM+CJS+d.ts
   twin-runtime/    Viewer、loaders（v2 / v1 / procedural / stream）、材质预设、行为插件、pick
   ioc-ui/          布局、结构化块渲染器、HTML 块宿主、主题注入、Custom Elements、现有卡片
-  acmap-tools/     build（无头浏览器）/ pack / inspect / v1-to-v2
+  map-tools/       bosmap build（无头浏览器）/ pack / inspect / acmap 导入
 apps/player  apps/studio
 models-src/<site>/buildModel.js    （来自 src/scene 和 src/sites/*/models）
 templates/<site>/                  （来自 src/sites 和 src/projects，由迁移脚本生成）
