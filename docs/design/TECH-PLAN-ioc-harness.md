@@ -385,6 +385,7 @@ models-src/<id>/buildModel.js  +  semantics 片段  +  site 元数据
 - SSE 订阅无法带请求头，允许 GET 时用 `?access_token=`，日志必须脱敏；P3 可改为 fetch 读流，这样就能带请求头。
 - 本机演示模式（`IOC_DEMO=1`）：名单选人、免登录，**只监听回环地址**，启动时打印警告。
 - 预览地址带短时签名 token，绑定 `projectId + draftId`，15 分钟过期。
+- **只读查看会话 cookie `ioc_view`**（P3-10 起，负责人 2026-09-25 确认）：前端用项目目录地址（`…/users/{u}/projects/{p}/[drafts/{d}/ | revisions/{rev}/]content/…`）打开服务端项目时，模型、HTML 块里的图片、CSS `url()` 是浏览器直接发的请求，带不上 Authorization。前端先用登录令牌 `POST /ioc/view-session` 换这个 cookie：HttpOnly、SameSite=Strict、Path 为对外前缀（`IOC_PUBLIC_BASE`，默认 `/ioc`）、https 下 Secure、1 小时过期，开着页面每 20 分钟续期。服务端**只在 GET `…/content/…` 上认它**，上下文限定 `ops = [project:read, draft:read]`，其他接口一律要请求头。令牌是 HMAC（密钥从 `JWT_SECRET` 派生、与预览令牌分开），和宿主 JWT、预览令牌互不通用。
 - S3 的 `scene_command`：要校验授权（观看端不能发指令）、限频（初始每个会话每秒 2 次），并按项目隔离广播。
 
 ### 7.3 存储事务（K5）
