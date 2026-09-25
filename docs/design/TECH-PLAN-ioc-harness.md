@@ -1,9 +1,9 @@
-# BuildingOS IOC 重构技术方案 · 执行稿 v2.1
+# BuildingOS IOC 重构技术方案 · 执行稿 v2.2
 
 > 状态：**执行稿**（v1 评审稿 + 两份评审意见的合并修订）。第 2 节决策和第 11 节阶段计划按本稿执行；第 12 节剩余问题在 V0 验证阶段内关闭。
 > 日期：2026-09-24
 > 单一来源：`buildingos.ioc/docs/TECH-PLAN.md`。`buildingos.harenss/docs/design/TECH-PLAN-ioc-harness.md` 是同内容副本；以后改动只改 ioc 仓库，再同步副本（V0-0 把两份纳入 git，并加 sha256 一致性检查）。
-> v1 → v2 的修改逐条记在附录 A「评审意见处理表」里。v2 → v2.1：写入 V0 验证结论（第 13 节，报告见 `docs/V0-REPORT.md`），并修正受影响的条目。
+> v1 → v2 的修改逐条记在附录 A「评审意见处理表」里。v2 → v2.1：写入 V0 验证结论（第 13 节，报告见 `docs/V0-REPORT.md`），并修正受影响的条目。v2.1 → v2.2：写入 P2 落地结论（第 14 节，验收记录见 `docs/P2-ACCEPTANCE.md`），决策不变。
 
 | 仓库 | 在本方案中的角色 |
 |---|---|
@@ -657,6 +657,22 @@ Smart → 吉行（包括 `jixing-twin`）→ relian → houston；另外**在 P
 | V0-5 宿主挂载 | 按宿主 module-loader 的方式挂载，与独立进程两种模式下 REST、SSE、JWT、静态托管、路径校验结果一致；没有双重前缀 | K15、7.2 已更新；**在真实宿主上挂载**列为 P3 第一项 |
 
 **V0 通过，进入 P0。**
+
+## 14. P2 落地结论（2026-09-25）
+
+验收记录：`docs/P2-ACCEPTANCE.md`。第 5、6 节的设计全部落地，下面只记实现里确定下来的做法和与原文不同的地方。
+
+| 项 | 落地做法 | 对原文的补充 |
+|---|---|---|
+| 5.1 结构化块 | `packages/ioc-ui`：9 个基础组件（Custom Elements，标签即契约的 `COMPONENT_TAGS`），7 种块映射到组件；大屏卡片 `blocks` | 契约 0.3.0 增加 `COMPONENT_SCHEMAS`、`BLOCK_KINDS`、`TONES`；组件属性按属性表校验 |
+| 5.2 样式注入 | 每个影子树挂三张共享表：组件样式、工具类（26 个）、主题令牌（挂在 `:host`，外加可选 `blockSkin`）；`applyTheme` 换主题时替换同一个 sheet | 主题的 `skin` 只作用于外壳；块内形状差异用 `blockSkin` |
+| 5.3 数据绑定 | `data-bind = <数据源>.<数据槽>.<路径>`，按最长槽名切分；路径禁止 `__proto__` / `constructor` / `prototype` | 动作执行器 `src/core/actions.js`；动作清单增加 `scene:mode`、`scene:layer`，目标实体校验只针对 focus / highlight / select |
+| 5.4 项目格式 | 入口 `/ioc/project?src=<目录>`：项目 → 运行时园区（一页一个态势）+ 场景提供者，复用现有大屏 / 演示外壳 | 页增加 `nav`、`summary`、`studio`、`bare`、`view`、`overlays`、`scene.mode`；项目增加 `defaults.site`（迁移期沿用内置园区外壳）；机位增加 `zoom`、`mode`；mock 数据里按参数取值写成 `{ "$by": "view", "values": … }`；契约包增加不依赖 ajv 的 `checkSchema` |
+| 5.4 迁移 | `scripts/migrate-legacy.mjs`：6 个项目 + smart、pioneer-cresthill 两个园区大屏 → `templates/`；逐页对比 54 / 54 一致 | 演示项目迁移后导航仍显示园区的态势（页的 `view`）；外壳样式改为园区声明 `shellClass` |
+| 6 player | `player/` + `vite.player.config.js`：`base: './'`，**目标 `chrome90`**（O3），CSP 只放行同源、Draco 需要的 wasm 与 blob Worker | Chrome 97 以前不认 `wasm-unsafe-eval`：自动改用 JS 版 Draco 解码器；补 `Array.prototype.at`；`:has()` 规则单独写 |
+| 6 导出 | `scripts/export-web.mjs`：播放器 + 项目一个版本 + `manifest.json`（schema `web-manifest.v1`：specVersion、revision、播放器构建号、逐文件 sha256、运行时依赖、数据源冻结情况） | 实时串流模型（`kind: stream`）拒绝导出；query / rest 数据源要等 P3 的取数接口；包体约 39 MB，按项目裁剪 public 留给 P3 |
+| 6 断网验收 | 8 个导出包：外网请求 0、CSP 拦截 0、加载失败 0、字体 / 解码器 / 模型全部本地；exe 实机（Chrome 153）断网通过 | 旧内核只在云端模拟过（`player-check --no-wasm`） |
+| 7.5 校验 | XSS / 越权用例 57 条，Node（parse5）与真实浏览器共用 | CSS 先按浏览器规则规整（去注释、解转义）再查；禁 `image-set()` / `src()`；`<a href>` 不能指向 html / svg 等会执行的文件；HTML 块宿主加 `contain: layout paint` |
 
 ---
 
