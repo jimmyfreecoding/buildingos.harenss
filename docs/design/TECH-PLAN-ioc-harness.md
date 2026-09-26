@@ -729,7 +729,7 @@ IOC_DATA_DIR/
    目标目录 `projects/{新 id}` 已存在也按冲突处理。
 3. 改名的项目**不改写**已有版本里 `project.json` 的 `id`（`revisions/` 不可变）：`id` 与目录名不一致时服务端以目录名为准（读出时覆盖成目录名；写入关口要求新写入的 `project.json` 与目录名一致），下一次发布自然改正。迁移记录里写明映射，前端地址按新 id。
 4. 先 `--dry-run` 打印计划（源、目标、冲突处理、磁盘占用）；执行时逐个 `rename`（同一文件系统上是原子的），最后把 `users/` 改名为 `users.migrated-<时间>`，写 `migration.json`（映射、时间、脚本版本）。
-5. 幂等：已迁移的项目跳过；中途失败可以重跑。服务启动时发现 `users/` 仍有未迁移项目，打印警告并拒绝写这些项目（读可以通过兼容别名，见 15.4.3）。
+5. 幂等：已迁移的项目跳过；中途失败可以重跑（每迁一个就写一次 `migration.json`，全部迁完才把 `users/` 改名）。服务启动时发现 `users/` 仍有未迁移项目，打印警告，`/health` 返回 `unmigrated` 个数；旧地址别名对这些项目返回 409 `E_UNMIGRATED`（P3B-03 实现时定为读写都不通：服务端不再读旧目录，免得两套数据各改各的）。
 
 ### 15.3 鉴权：读不鉴权，写由 `IOC_AUTH` 控制（替代 7.2、K15）
 
@@ -829,7 +829,7 @@ can(ctx, op, target):
 
 #### 15.4.3 兼容期（只在 P3B 内，P3B 验收时删除，15.10 第 4 条）
 
-- 服务端保留旧路径的**别名**：`/users/{u}/projects/{p}/…` → 按 `migration.json` 的映射（没有映射就用 `{p}`）内部改写到 `/projects/{新 id}/…`；
+- 服务端保留旧路径的**别名**（`src/http/legacy-alias.ts`，同步改写 `req.url`，排在所有中间件最前面、不包 `keepUrl`）：`/users/{u}/projects/{p}/…` → 按 `migration.json` 的映射（没有映射就用 `{p}`）内部改写到 `/projects/{新 id}/…`；
   读请求直接返回（带 `Deprecation: true`、`Link: <新地址>; rel="successor-version"`），写请求按新规则鉴权（旧 JWT 在 `host` 模式下仍然有效）。
 - `/preview/{u}/{p}/{d}/{token}/…` → 同样改写到 `/projects/{p}/drafts/{d}/content/…`，令牌忽略。
 - 前端 `serverSource()` 同时认旧地址并自动换成新地址（`history.replaceState`），已经收藏的链接还能打开。
