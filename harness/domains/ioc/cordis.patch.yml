@@ -1,0 +1,58 @@
+# ioc 域 profile 用户层 —— DSH 侧的唯一改动面（TECH-PLAN 8.4）
+#
+# 容器内的位置：/data/dsh/profiles/ioc/cordis.patch.yml（由 start.sh 每次启动覆盖）
+# 校验：dsh --profile ioc --dump-config
+#
+# 层序：bundle 层 → 本文件 → $DSH_HOME/cordis.patch.yml → --patch 叠加
+
+# ── 1. 程序化工具调用 ────────────────────────────────────────────
+- id: tools
+  config:
+    mode: ptc
+
+# ── 2. 监听地址 ────────────────────────────────────────────────
+# 默认绑 127.0.0.1 只有容器内部能访问；CLI 的 --host 拒绝 0.0.0.0，但 webserver 支持，
+# 所以在用户层覆盖。patch 会替换整块 config，每个键都要重述。
+- id: webserver
+  config:
+    host: '0.0.0.0'
+    port: !!js Number(process.env.IOC_DSH_PORT ?? 3090)
+    compression: gzip
+    compressionLevel: 1
+    compressionThresholdBytes: 1024
+
+# ── 3. 模型 ────────────────────────────────────────────────────
+# 强模型做页面搭建（IOC_DSH_MODEL 可换）；密钥来自 /data/dsh/.credentials.yaml，模型看不到。
+- id: agent-default-model
+  config:
+    provider: deepseek-official
+    model: !!js (process.env.IOC_DSH_MODEL ?? 'deepseek-chat')
+    reasoningEffort: high
+
+# ── 4. ioc 的 MCP 端点 + 浏览器 ─────────────────────────────────
+# 工具清单（get_catalog / get_page / apply_spec_patch / write_block / bind_query …）由
+# apps/ioc 的 /ioc/mcp 提供。url 与 token 都从环境读：token 文件由 gateway 为**这个会话进程**
+# 单独写（0600），模型看不到；failOnStartupError 保证 MCP 不可用时启动就失败，不静默降级。
+- insert:
+    - id: ioc-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ioc
+        transport: streamable-http
+        url: !!js process.env.IOC_MCP_URL
+        headers:
+          Authorization: !!js ('Bearer ' + process.getBuiltinModule('node:fs').readFileSync(process.env.IOC_MCP_TOKEN_FILE, 'utf8').trim())
+        failOnStartupError: true
+
+    # 浏览器：看草稿预览地址、截图核对。镜像里装了 Chromium 与 Playwright 依赖（见 harness/image/Dockerfile）。
+    - id: browser
+      name: '@deepseek-ai/dsh-experimental-browser-use-playwright-mcp'
+
+# ── 5. persona ────────────────────────────────────────────────
+- id: system-prompt
+  config:
+    personaSuffix: >-
+      你只通过 mcp__ioc__* 工具读写这个 IOC 项目的**草稿**：写页面、写 HTML 块、引用具名查询模板。
+      你不能发布版本、不能恢复旧版本、不能导出、不能新建或删除项目，这些只有人能点；
+      不要试图绕过工具直接改文件。任何结论都要给出依据（读到的是哪份文件、哪个字段）。
+      草案改动要以最小差异完成，并在答复里说明改了哪些文件、为什么。
