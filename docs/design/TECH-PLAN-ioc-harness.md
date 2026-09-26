@@ -907,7 +907,8 @@ docker buildx build -f packages/ioc-server/docker/Dockerfile \
 - 仓库与版本（15.10 第 8 条）：`docker.cnb.cool/geeqee2025/ioc-server:<版本>`（以负责人最终确认的名字为准），版本号独立编号（从 `0.5.0` 起），另打 `latest`；
   label：`org.opencontainers.image.version`、`org.opencontainers.image.revision`（buildingos.ioc 提交号）、`io.buildingos.ioc.contracts`（契约包版本）、`io.buildingos.ioc.openapi`（openapi 版本）。
   CNB 只收 Docker 原生清单（buildingos.ai 的 `build-edge-frontend.yml` 注释）：推送时关 provenance / sbom，多架构清单用 `oci-mediatypes=false`（Docker manifest list）。
-- 体积估计（实测依赖大小推算）：基础镜像 node:22-alpine 约 160 MB（压缩约 55 MB）+ 运行时依赖约 27 MB + 播放器 45 MB（其中 public 约 27 MB，以后可裁剪）+ 后端与模板约 3 MB
+- **实测（P3B-05）**：拉取约 108 MB（amd64、arm64 接近）；解压约 260 MB（基础镜像 160 + 生产依赖 54 + 播放器 45 + 后端与模板 2）。构建机在 TLS 拦截代理后面时，`docker/build.mjs --ca <证书>` 以 BuildKit secret 传给构建阶段的 npm，不进镜像。
+- 体积估计（P3B-01 时按依赖大小推算）：基础镜像 node:22-alpine 约 160 MB（压缩约 55 MB）+ 运行时依赖约 27 MB + 播放器 45 MB（其中 public 约 27 MB，以后可裁剪）+ 后端与模板约 3 MB
   → **解压约 235 MB，拉取约 100 MB**；两种架构接近。
 - 运行：非 root 用户 `node`（uid 1000）；工作目录 `/app`；**数据卷 `/data`**（`IOC_DATA_DIR=/data`）；端口 3040；`STOPSIGNAL SIGTERM`（Nest 优雅退出，写锁内的发布完成后再退）。
 - 健康检查：`HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD wget -qO- http://127.0.0.1:3040/ioc/health || exit 1`（alpine 自带 busybox wget）。
