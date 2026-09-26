@@ -1,14 +1,14 @@
-# BuildingOS IOC 重构技术方案 · 执行稿 v2.2
+# BuildingOS IOC 重构技术方案 · 执行稿 v2.3
 
 > 状态：**执行稿**（v1 评审稿 + 两份评审意见的合并修订）。第 2 节决策和第 11 节阶段计划按本稿执行；第 12 节剩余问题在 V0 验证阶段内关闭。
 > 日期：2026-09-24
 > 单一来源：`buildingos.ioc/docs/TECH-PLAN.md`。`buildingos.harenss/docs/design/TECH-PLAN-ioc-harness.md` 是同内容副本；以后改动只改 ioc 仓库，再同步副本（V0-0 把两份纳入 git，并加 sha256 一致性检查）。
-> v1 → v2 的修改逐条记在附录 A「评审意见处理表」里。v2 → v2.1：写入 V0 验证结论（第 13 节，报告见 `docs/V0-REPORT.md`），并修正受影响的条目。v2.1 → v2.2：写入 P2 落地结论（第 14 节，验收记录见 `docs/P2-ACCEPTANCE.md`），决策不变。
+> v1 → v2 的修改逐条记在附录 A「评审意见处理表」里。v2 → v2.1：写入 V0 验证结论（第 13 节，报告见 `docs/V0-REPORT.md`），并修正受影响的条目。v2.1 → v2.2：写入 P2 落地结论（第 14 节，验收记录见 `docs/P2-ACCEPTANCE.md`），决策不变。v2.2 → v2.3：P3 验收（`docs/P3-ACCEPTANCE.md`）后的 **P3B 后端归位**（第 15 节，决策 K23，替代 K4、K15）。
 
 | 仓库 | 在本方案中的角色 |
 |---|---|
-| `buildingos.ioc` | **IOC 前端唯一来源**：模型运行时、.buildingosmap 编译、页面框架、studio / player、共享契约包 |
-| `buildingos` | NestJS 宿主；新增微服务 `apps/ioc`（存储、事务、导出、MCP、托管前端） |
+| `buildingos.ioc` | **IOC 产品的全部源码**（K23）：模型运行时、.buildingosmap 编译、页面框架、studio / player、共享契约包、**后端 `packages/ioc-server`**、模板；产出宿主挂载产物、Docker 镜像 |
+| `buildingos` | NestJS 宿主；`apps/ioc` 是可选的挂载外壳，加载 buildingos.ioc 构建好的后端产物（K23；P3 时源码在这里） |
 | `buildingos.harenss` | harness 平台（DSH 镜像、gateway、三个业务域）+ netops 产品（probe、netops-api） |
 | `buildingos_webmap` | 旧格式 .acmap 与 AirocovMap 引擎（只参考，不改） |
 | `deepseek-harness` | DSH 上游（只参考，不改） |
@@ -47,7 +47,7 @@
 | K1 | 模型采用「共用运行时 + 独立模型文件」。渲染性能不低于现在的程序化版本，衡量指标见 4.7 |
 | K2 | 新格式为 **.buildingosmap**（K21）；运行时兼容导入 webmap 的加密 .acmap；新格式不强制加密 |
 | K3 | 本地浏览器 exe 已完成；本方案只保证导出的 `web.zip` 在它上面能运行（要记录它的 Chromium 版本，见第 6 节） |
-| K4 | ioc 后端是 `buildingos/apps/ioc`，遵循宿主的微服务规范（按宿主实际实现做修正，见 7.1） |
+| K4 | ~~ioc 后端是 `buildingos/apps/ioc`~~ **已由 K23 替代**：后端源码在 buildingos.ioc，`apps/ioc` 只是挂载外壳（见第 15 节） |
 | K5 | 第一版用文件存储，不用 Git；**但必须具备事务语义**（见 7.3） |
 | K6 | 骨架结构化，内容可以自由（见第 5 节，本版细化为双轨） |
 | K7 | AI 全部通过 DSH 以服务方式提供，Docker 封装，具体模型在 profile 里配置 |
@@ -63,7 +63,7 @@
 | K12 | **IOC 前端唯一来源是 buildingos.ioc**。harenss 的 `apps/web` **冻结**（只允许修复性改动），其中唯一的 netops 专有组件 `HealthCheck.vue` 在 P7a 迁入 ioc 后整体删除（P0 执行时发现该目录有未提交的改动且含 netops 专有组件，故由「P0 删除」改为「冻结 + P7a 删除」，见 harenss DECISIONS D14） | 两份评审 |
 | K13 | 内容块双轨：**结构化块**（`metric / list / ring / line / progress / text / table`，ARCHITECTURE §10 路线 B）承担没有 AI 时的可视化编辑；**HTML 块**是 AI 直出通道。两者都是布局里的一个 box | DeepSeek §4-§5 问题 2，并保留产品负责人「AI 直接生成 HTML」的要求 |
 | K14 | 样式注入：HTML 块和结构化块都在 Shadow DOM 中渲染。令牌层（CSS 变量）天然穿透；**工具类和主题 skin 编译成 `CSSStyleSheet`，通过 `adoptedStyleSheets` 注入每个 shadow root** | DeepSeek B2 |
-| K15 | 身份授权从 **P3 开始**就生效。所有写接口都要求宿主签发的 JWT，由 apps/ioc 用与宿主相同的密钥自行校验（V0-5）。「名单选人」只在本机演示模式下可用（只监听回环地址） | 两份评审 |
+| K15 | **已由 K23 替代（读不鉴权、写由 `IOC_AUTH` 控制、不按用户存储，见第 15 节）。** 原文：身份授权从 **P3 开始**就生效。所有写接口都要求宿主签发的 JWT，由 apps/ioc 用与宿主相同的密钥自行校验（V0-5）。「名单选人」只在本机演示模式下可用（只监听回环地址） | 两份评审 |
 | K16 | 实时推送改用 **SSE**（宿主已有先例）。`local_module` 模式下子应用没有独立的 HTTP server，所以不做 WebSocket | DeepSeek B4 |
 | K17 | 业务数据由**领域数据服务**负责（netops → netops-api；iot → buildingos.ai 的数据接口）。apps/ioc 只做项目、呈现和查询编排，不直接连业务库 | ChatGPT 5 |
 | K18 | **AI 不写 SQL**。具名查询只能引用领域服务预先注册的查询模板，AI 只填参数 | DeepSeek B6 |
@@ -71,6 +71,7 @@
 | K20 | **新楼宇模型的生产方式 = 规范驱动的大模型建模**：把《模型编写规范》、效果图和 CAD 一起交给大模型，由它写出 `models-src/<id>/buildModel.js`，再用 `bosmap build` 编译、验收。webmap 的 DXF→acmap 工具链已经失败，**不考虑**；GLB→acmap 也不作为主路径 | 产品负责人 |
 | K21 | **模型文件格式定名为 `.buildingosmap`**（zip：manifest + glb + 语义，manifest 里 `format: "buildingosmap"`、`version: 1`）。`.acmap` 只作为旧格式**兼容导入**，不再产出；运行时按文件内容识别格式，不看后缀。编译命令为 `bosmap`（`packages/map-tools`） | 负责人（P1 执行中） |
 | K22 | **Three.js 从 r115 升级到 0.186.1（精确锁定）**。r115 是仓库初始提交带来的，没有必须保留的技术理由；新版 API 是《模型编写规范》和大模型建模的基础，并修复安全通告 GHSA-fq6p-x6j3-cmmq。现有场景通过 `twin-runtime/src/compat.js`（关闭色彩管理 + 灯光 ×π）保持 r115 的画面；是否整体改用物理正确的新设置，留作后续的视觉决策。详见 `docs/THREE-UPGRADE.md` | 负责人（P1 执行中） |
+| K23 | **后端归位与以项目为单位（P3B）**：ioc 后端源码放在 buildingos.ioc（`packages/ioc-server`），一个仓库产出宿主挂载产物、多架构 Docker 镜像（amd64 + arm64）和可直接 `node` 启动的目录，支持「挂在 buildingos 里」「园区边缘 buildingos.ai/edge 旁的独立容器」「树莓派单机」三种部署；存储和接口以项目为单位（`IOC_DATA_DIR/projects/{p}`、`/projects/{p}/…`），不做用户体系；**读操作不鉴权**，写操作由 `IOC_AUTH`（`none` 默认 / `token` 按项目编辑口令或管理令牌 / `host` 宿主 JWT）控制；写入校验、AI 不能发布、上传限制不放松；AI 可选。**替代 K4「后端 / AI 放在 buildingos」和 K15「按用户存储和授权」**。详见第 15 节 | 负责人（2026-09-26，P3 验收后） |
 
 ---
 
@@ -362,6 +363,8 @@ models-src/<id>/buildModel.js  +  semantics 片段  +  site 元数据
 ---
 
 ## 7. 服务层：buildingos/apps/ioc
+
+> **P3B 起按第 15 节（K23）调整**：后端源码搬进 buildingos.ioc 的 `packages/ioc-server`；7.1 的挂载方式、7.2 的授权、7.3 的存储路径、7.6 的接口路径以第 15 节为准；7.4、7.5 不变。下文保留 P3 交付时的写法。
 
 ### 7.1 脚手架和手工修正清单
 
@@ -674,6 +677,327 @@ Smart → 吉行（包括 `jixing-twin`）→ relian → houston；另外**在 P
 | 6 导出 | `scripts/export-web.mjs`：播放器 + 项目一个版本 + `manifest.json`（schema `web-manifest.v1`：specVersion、revision、播放器构建号、逐文件 sha256、运行时依赖、数据源冻结情况） | 实时串流模型（`kind: stream`）拒绝导出；query / rest 数据源要等 P3 的取数接口；包体约 39 MB，按项目裁剪 public 留给 P3 |
 | 6 断网验收 | 8 个导出包：外网请求 0、CSP 拦截 0、加载失败 0、字体 / 解码器 / 模型全部本地；exe 实机（Chrome 153）断网通过 | 旧内核只在云端模拟过（`player-check --no-wasm`） |
 | 7.5 校验 | XSS / 越权用例 57 条，Node（parse5）与真实浏览器共用 | CSS 先按浏览器规则规整（去注释、解转义）再查；禁 `image-set()` / `src()`；`<a href>` 不能指向 html / svg 等会执行的文件；HTML 块宿主加 `contain: layout paint` |
+
+## 15. P3B 后端归位（K23，2026-09-26）
+
+> 负责人 2026-09-26 的决定，P3B-01 设计（本节）确认后执行。本节**替代** K4「ioc 后端是 `buildingos/apps/ioc`」和 K15「身份授权（按用户、宿主 JWT）」，
+> 并改写第 7 节的 7.1（挂载方式）、7.2（授权）、7.3（存储路径）、7.6（接口）；7.4 写入关口、7.5 校验规范不变。P3 的验收状态见 `docs/P3-ACCEPTANCE.md`。
+
+### 15.1 目标与三种部署
+
+同一套后端代码支持三种部署：
+
+| 场景 | 形态 | 前端 | 数据 | 默认 `IOC_AUTH` |
+|---|---|---|---|---|
+| A 宿主挂载（现状，保留） | buildingos 以 `local_module` 挂载 `apps/ioc` 薄外壳，外壳加载 buildingos.ioc 构建好的后端产物 | 宿主托管 `/ioc/app/`（`IOC_APP_DIR`） | `IOC_DATA_DIR`（宿主机上的目录） | `none`（可改 `host`） |
+| B 大型部署：云端 buildingos + 园区边缘 buildingos.ai/edge | ioc 后端作为**独立容器**跑在每个园区的 edge 旁边（15.8） | 镜像内置播放器，容器直接托管 | 容器数据卷 `/data` | `token`（跨网访问时）或 `none`（仅园区内网） |
+| C 非楼宇项目（仓库等）：树莓派 | 前后端同一个容器（或 `node` 直接启动），不要 buildingos | 同上 | 外接 SSD 上的目录 | `none`（内网）/ `token` |
+
+**buildingos.ioc 是 IOC 产品的全部源码**（前端、后端、契约、模板、播放器），一个仓库产出三种交付物：宿主挂载产物、多架构 Docker 镜像、可直接 `node` 启动的目录。
+buildingos 只是可选的宿主之一。
+
+### 15.2 以项目为单位的存储（替代 7.3 的路径）
+
+项目 = 一个实际项目（园区、仓库）：一个 `project.json`、多个模型（`assets.models`：A 栋、B 栋、楼层室内……）、多个页面。项目格式（第 5.4 节）不变，只有存储位置和接口变。
+
+```
+IOC_DATA_DIR/
+├─ projects/{p}/                 与 P3 的 users/{u}/projects/{p}/ 内部结构完全相同
+│  ├─ project.meta.json          { currentRevision, revisions[], editKey? }   editKey 见 15.3，只在这里，不进任何版本
+│  ├─ current.json · revisions/{rev}/ · assets/{sha256}.ext · drafts/{d}/
+├─ migration.json                迁移记录（15.2.2）
+└─ users.migrated-<时间>/         迁移前的旧目录（改名保留，不删）
+```
+
+- 不做用户体系、项目成员、角色表。`listUsers`、`/me`、`/users` 删除。
+- 草稿的 `draft.json` 保留 `source`（`human` / `ai`）、`sessionId`（AI 会话）、`createdAt`，新增 `createdVia`（`none` / `token` / `host:<宿主用户 id>`，只做审计），**不再用 `owner` 限制谁能改**。
+- 事务语义（修订号、原子发布、写锁、tombstone、保留策略、导出引用）一字不改，只是根目录少一层。
+
+#### 15.2.1 项目 id
+
+沿用 `^[A-Za-z0-9_-]{1,64}$`。项目 id 在整个 `IOC_DATA_DIR` 内唯一；新建 / 导入时已存在返回 409。
+
+#### 15.2.2 迁移脚本（已有 `users/*/projects/*`）
+
+`node packages/ioc-server/bin/migrate-projects.mjs --data <IOC_DATA_DIR> [--dry-run] [--on-conflict=suffix|fail] [--map <u>/<p>=<新 id> …]`
+
+1. 扫描 `users/*/projects/*`，校验每个项目的 `project.meta.json` 与 `current.json` 能读。
+2. 目标 id：默认沿用 `{p}`；多个用户有同名 `{p}` 时（**冲突**）：
+   - `--on-conflict=suffix`（默认）：修订号最新（`updatedAt` 最晚）的那个保留 `{p}`，其他的改名为 `{p}-{u}`（清洗成合法 id、截到 64 位，仍冲突就再加 `-2`、`-3`）；
+   - `--on-conflict=fail`：列出全部冲突，不做任何改动，退出码 1；
+   - `--map` 手工指定，优先级最高。
+   目标目录 `projects/{新 id}` 已存在也按冲突处理。
+3. 改名的项目**不改写**已有版本里 `project.json` 的 `id`（`revisions/` 不可变）：`id` 与目录名不一致时服务端以目录名为准（读出时覆盖成目录名；写入关口要求新写入的 `project.json` 与目录名一致），下一次发布自然改正。迁移记录里写明映射，前端地址按新 id。
+4. 先 `--dry-run` 打印计划（源、目标、冲突处理、磁盘占用）；执行时逐个 `rename`（同一文件系统上是原子的），最后把 `users/` 改名为 `users.migrated-<时间>`，写 `migration.json`（映射、时间、脚本版本）。
+5. 幂等：已迁移的项目跳过；中途失败可以重跑。服务启动时发现 `users/` 仍有未迁移项目，打印警告并拒绝写这些项目（读可以通过兼容别名，见 15.4.3）。
+
+### 15.3 鉴权：读不鉴权，写由 `IOC_AUTH` 控制（替代 7.2、K15）
+
+**读操作一律不鉴权**：大屏、演示、播放器、读项目文件（当前版本、指定版本、草稿）、版本 / 草稿列表、SSE 订阅、模板列表、schema、health。宿主菜单直接打开 `/ioc/app/` 就能用，不交接令牌。
+
+**写操作**：开草稿、写文件、补丁、删文件、发布、恢复、丢弃草稿、上传、导入、新建（含从模板）、导出、以后的 AI 写入、编辑口令管理。按 `IOC_AUTH`：
+
+| 模式 | 写操作的要求 | 管理操作（新建 / 导入项目、设置编辑口令） |
+|---|---|---|
+| `none`（默认） | 全部开放 | 全部开放 |
+| `token` | 请求头 `X-IOC-Edit-Key: <该项目的编辑口令>`，**或** `Authorization: Bearer <IOC_ADMIN_TOKEN>` | 只认管理令牌 |
+| `host` | 宿主签发的 JWT（`Authorization: Bearer`，`JWT_SECRET` 与宿主一致，只收 HS256）；任何有效用户都能写（不做成员） | 宿主角色含 `admin`（大小写不敏感，宿主写的是 `Admin`） |
+
+编辑口令（`token` 模式）：
+
+- 每个项目一个，存在 `projects/{p}/project.meta.json` 的 `editKey: { algo: 'scrypt', salt, hash, updatedAt }`，只存哈希；**不在任何版本、导出包、读接口里出现**。
+- 设置 / 更换：`PUT /projects/{p}/edit-key`（管理令牌，或当前编辑口令），请求体 `{ "key": "…" }` 或 `{ "generate": true }`（生成 24 字节随机口令，**只在这次响应里返回一次**）；`DELETE /projects/{p}/edit-key`（管理令牌）清除后该项目只能用管理令牌写。
+- 新建项目（管理令牌）时可以一起设口令；没设口令的项目在 `token` 模式下只有管理令牌能写。
+- `IOC_ADMIN_TOKEN` 至少 32 个字符；也可以用 `IOC_ADMIN_TOKEN_FILE`（Docker secrets）。`token` 模式下两者都没设，启动失败。
+- 比较用常量时间；同一来源地址 1 分钟内失败 10 次后，该地址的写请求 1 分钟内一律 429（内存计数，单进程足够）。
+- 前端：写操作收到 `401 E_AUTH_EDIT_KEY` 时弹框要口令，按项目存在 sessionStorage（`ioc:edit-key:<p>`），之后写请求带上请求头；「换一个口令」「清除」在同一个弹框里。
+
+不因为读不鉴权而放松的：
+
+- 写入关口（契约包 schema、HTML 块 `lintBlock`、XSS 用例、路径白名单、资源类型）照旧，三种模式都一样。
+- **AI 不能发布**（8.5）：AI 会话令牌（gateway 为每个会话签发，绑定项目 + 草稿 + ops）只能写绑定的草稿，不能发布、恢复、导出、丢弃、新建；三种模式都一样，`none` 也不例外（AI 请求走 `/mcp`，只认会话令牌）。
+- 上传、导入的体积 / 条目 / 解压总量 / 路径限制照旧。
+- 草稿只记录来源（人工 / AI 会话），用于审计和 AI 会话绑定，不限制谁能改。
+
+权限表（替代 `auth/policy.ts` 的 6 条规则）：
+
+```
+操作分三类：read（不检查）/ write / admin
+can(ctx, op, target):
+  1. AI 会话令牌（ctx.sessionId）：op ∈ {draft:read, draft:write, live:subscribe}，且 target.draft.sessionId === ctx.sessionId、target.projectId === ctx.projectId
+  2. op 是 read 类 → 允许
+  3. IOC_AUTH=none → 允许
+  4. IOC_AUTH=token → admin 类要管理令牌；write 类要管理令牌或该项目的编辑口令
+  5. IOC_AUTH=host  → admin 类要宿主 admin；write 类要任意有效宿主 JWT
+```
+
+测试的改法：`auth.test.mjs` 改成「模式 × 操作类 × 凭据」的表驱动用例（3 × 3 × 各凭据），另加 AI 会话令牌在三种模式下都不能发布；
+变异测试覆盖：去掉 read/write 分类、去掉口令校验、去掉 AI 发布禁令、`host` 模式去掉大小写不敏感。
+`host-check.mjs` 加 `--auth none|token|host` 与 `--edit-key` / `--admin-token` / `--token`：读的项目全部不带凭据；写的项目在 `token` / `host` 下先验证不带凭据被拒（401），再带凭据通过。
+
+预览令牌和 `ioc_view` cookie：
+
+- **`ioc_view` cookie 删除**：它只为「浏览器直接取模型 / 图片时带不上 Authorization」而存在；读不鉴权后没有用处。`POST/DELETE /view-session`、守卫里认 cookie 的分支、前端 `startViewSession` 一起删。
+- **预览令牌删除**：草稿本来就可以不带凭据读（`/projects/{p}/drafts/{d}/content/`），短时令牌不再提供任何保护；「预览地址」就是草稿的 content 地址。
+  `POST /projects/{p}/drafts/{d}/preview` 保留一个版本作为兼容，返回 `{ src, url }`（不再有 token / expiresAt），P4 起删除；MCP 的 `preview_url` 工具返回同样的地址。
+  旧的 `/preview/{u}/{p}/{d}/{token}/…` 在兼容期里按 15.4.3 转到新地址（令牌不再校验）。
+- 代价：草稿地址被转发出去后别人一直能看，直到草稿发布或丢弃。需要「限时分享」时以后再加（签名 + 过期，作用在分享链接上，不影响读接口）。
+
+`IOC_AUTH=none` 的风险：**能访问这个地址的人都能改、发布、恢复任何项目，也能新建、导入、导出**。只适合园区内网、隔离的边缘网段、单机树莓派。
+**公网部署或跨网段可达时必须用 `token` 或 `host`。** 启动时：
+
+- 独立进程（B / C）：`IOC_AUTH=none` 且监听地址不是回环 / 私有网段（`HOST` 未设即 `0.0.0.0`，逐个检查网卡地址；`10/8`、`172.16/12`、`192.168/16`、`fc00::/7`、`fe80::/10`、回环以外的都算公网），打印醒目的多行警告（红色 + 边框），并在 `/health` 返回 `authWarning`；
+- 宿主挂载（A）：拿不到宿主的监听地址，`none` 时启动固定打印一行警告，提示可改 `IOC_AUTH=host`。
+
+### 15.4 接口变更（替代 7.6 的路径）
+
+#### 15.4.1 REST 对照表（前缀 `/ioc` 不变）
+
+| P3（旧） | P3B（新） | 类 |
+|---|---|---|
+| `GET /me`、`GET /users` | 删除；新增 `GET /capabilities` → `{ version, contracts, auth: 'none'|'token'|'host', ai: bool, writable: bool }` | read |
+| `GET /users/{u}/projects`、`POST /users/{u}/projects` | `GET /projects`、`POST /projects`（`template` 照旧） | read / admin |
+| `POST /users/{u}/projects/import?projectId=` | `POST /projects/import?projectId=` | admin |
+| `GET /users/{u}/projects/{p}/files?path=&rev=` | `GET /projects/{p}/files?path=&rev=` | read |
+| `…/{p}/content/…`、`…/revisions/{rev}/content/…`、`…/drafts/{d}/content/…` | `/projects/{p}/content/…`、`/projects/{p}/revisions/{rev}/content/…`、`/projects/{p}/drafts/{d}/content/…` | read |
+| `GET …/revisions`、`POST …/revisions/{rev}/restore` | `/projects/{p}/revisions`、`…/restore` | read / write |
+| `GET/POST …/drafts`、`GET/DELETE …/drafts/{d}` | `/projects/{p}/drafts`、`/projects/{p}/drafts/{d}` | read / write |
+| `GET/PUT/DELETE …/drafts/{d}/files`、`POST …/patch`、`POST …/publish` | `/projects/{p}/drafts/{d}/…` | read / write |
+| `POST …/assets?draft=` | `POST /projects/{p}/assets?draft=` | write |
+| `POST …/export?revision=` | `POST /projects/{p}/export?revision=`（另加 `GET` 同地址，便于浏览器直接下载） | write（导出会占用 CPU，仍算写） |
+| `POST …/drafts/{d}/preview` | 兼容保留一个版本，返回草稿 content 地址 | read |
+| `GET /preview/{u}/{p}/{d}/{token}/…` | 删除（兼容期转发，见 15.4.3） | read |
+| `POST/DELETE /view-session` | 删除 | — |
+| `GET /live?user=&project=&draft=` | `GET /live?project=&draft=`（不鉴权） | read |
+| —— | `PUT/DELETE /projects/{p}/edit-key`（`token` 模式） | admin |
+| `GET /templates`、`/schemas/{name}`、`/health`、`/menu.json` | 不变（`/health` 增加 `auth`、`authWarning`） | read |
+| `/ai/*`、`/mcp`、`/query/run` | 路径不变；AI 未配置时 404 `E_AI_DISABLED`（15.7） | — |
+
+`docs/openapi.yaml` 随 P3B-03 整体改写（版本 0.5.0），用对照表逐条改；`lint:openapi` 照旧。
+
+#### 15.4.2 前端 `?src=` 地址
+
+| P3 | P3B |
+|---|---|
+| `/ioc/app/?src=/ioc/users/{u}/projects/{p}/content/#access_token=…` | `/ioc/app/?src=/ioc/projects/{p}/content/` |
+| `…/users/{u}/projects/{p}/drafts/{d}/content/` | `/ioc/projects/{p}/drafts/{d}/content/` |
+| `/ioc/app/?src=/ioc/preview/{u}/{p}/{d}/{token}/` | `/ioc/app/?src=/ioc/projects/{p}/drafts/{d}/content/` |
+
+- `src/project/server.js`：`serverSource()` 认新地址；读不带任何凭据；`serverToken()`（`#access_token=`）和 `startViewSession()` 删除。
+- 写凭据：打开时先取 `/capabilities`：`none` 直接写；`token` 在第一次写被拒时弹框要口令（15.3）；`host` 用宿主 JWT（来源见 15.10 问题 3）。
+- 演示模式「保存视角 / 自由摆放」写服务端草稿的逻辑不变，只是地址和凭据换了；`writable: false`（例如 `token` 模式还没输口令）时照样可以编辑，点保存才要口令。
+
+#### 15.4.3 兼容期（P3B 内，P4 起删除）
+
+- 服务端保留旧路径的**别名**：`/users/{u}/projects/{p}/…` → 按 `migration.json` 的映射（没有映射就用 `{p}`）内部改写到 `/projects/{新 id}/…`；
+  读请求直接返回（带 `Deprecation: true`、`Link: <新地址>; rel="successor-version"`），写请求按新规则鉴权（旧 JWT 在 `host` 模式下仍然有效）。
+- `/preview/{u}/{p}/{d}/{token}/…` → 同样改写到 `/projects/{p}/drafts/{d}/content/…`，令牌忽略。
+- 前端 `serverSource()` 同时认旧地址并自动换成新地址（`history.replaceState`），已经收藏的链接还能打开。
+- 别名在 P4 删除；删除前 `/health` 的 `deprecatedHits` 计数给负责人看有没有人还在用。
+
+### 15.5 源码搬迁：`packages/ioc-server`
+
+```
+buildingos.ioc/
+├─ packages/ioc-contracts/        不变
+├─ packages/ioc-server/           ← buildingos/apps/ioc/{src,test,scripts,vendor,docs} 搬来
+│  ├─ package.json                name @buildingos/ioc-server；dependencies 只有运行时需要的（@nestjs/common、core、platform-express、reflect-metadata、rxjs；jwt 仅 host 模式）
+│  ├─ tsconfig.json · tsconfig.host-check.json
+│  ├─ src/                        main.ts（独立启动）、app.module.ts、http/keep-url.ts（保留）、store/、gate/、auth/、…
+│  ├─ bin/ioc-server.mjs          node 启动入口：读环境变量，打印配置和 15.3 的警告
+│  ├─ bin/migrate-projects.mjs    15.2.2
+│  ├─ scripts/build.mjs           tsc → dist/；组装交付物（15.5.2）
+│  ├─ scripts/deliver-buildingos.mjs  把宿主挂载产物复制到 ../buildingos/apps/ioc/ioc-server/
+│  ├─ vendor/                     parse5、yauzl、fflate（仍然单文件，宿主挂载不装依赖）；vendor-deps.mjs 照旧
+│  ├─ docker/Dockerfile · docker/compose.yml
+│  ├─ docs/openapi.yaml
+│  └─ test/                       现有 128 项 + 新增；server.mjs 的宿主式挂载保留
+├─ templates/ · player/ · dist-player/（构建产物）
+```
+
+#### 15.5.1 同仓库直接引用（不再复制再核对 sha256）
+
+| 资源 | 开发 / 独立 / Docker | 宿主挂载产物 |
+|---|---|---|
+| 契约包 | `require('../../ioc-contracts/dist/index.cjs')`（构建时先 `npm run build` 契约包；启动时找不到就报错退出，不再「contracts: missing」继续跑） | 构建时复制进产物的 `vendor/ioc-contracts/` |
+| 模板 | 直接读仓库的 `templates/`（`IOC_TEMPLATES_DIR` 默认指向它）；启动时扫描生成清单，**去掉 `index.json` 和逐文件 sha256** | 构建时复制进产物的 `templates/` |
+| 模型（模板里没有的） | 直接读 `public/models/`（和开发服务器、导出一致） | 复制进产物的 `templates/_models/`，不再从播放器目录取、不再核对 sha256 |
+| 播放器 | `dist-player/`（`IOC_APP_DIR` 默认指向它；Docker 镜像内置） | 不进产物（45 MB）：宿主用 `IOC_APP_DIR` 指向一份 `dist-player`，与 P3 相同 |
+
+产物整体有一个 `VERSION.json`（buildingos.ioc 的提交号、构建时间、各部分版本、**每个文件的 sha256**），外壳的测试核对一次；
+这是「整包一次」的核对，取代 P3 时模板、契约包各自的 sha256。`scripts/vendor-templates.mjs`、`vendor:buildingos`（契约包）删除，由 `deliver-buildingos.mjs` 取代。
+
+#### 15.5.2 buildingos `apps/ioc` 薄外壳
+
+```
+buildingos/apps/ioc/
+├─ package.json                   buildingos 元数据块（service、title、health、menu）；没有 dependencies、没有 scripts.build
+├─ service-registry-entry.json    entryModule: apps/ioc/ioc-server/dist/app.module.js，prefix: /ioc
+├─ menu.json · readme.md · .gitattributes（ioc-server/** -text）
+├─ ioc-server/                    ← deliver-buildingos.mjs 产出，提交进 buildingos（约 2 MB：dist + vendor + templates；不含播放器）
+│  ├─ dist/ · vendor/ · templates/ · VERSION.json
+└─ test/shell.test.mjs            产物完整（VERSION.json 逐文件核对）、运行时 require 白名单（宿主根 node_modules 里有的包 + 产物内相对路径）
+```
+
+- 外壳**没有 `tsconfig.json`**：宿主的 `build:micros` 遇到没有 tsconfig 的子应用直接跳过，不再在宿主里编译 ioc 源码（P3 的「提交钩子删断言」一类问题随之消失）。
+- 更新方式：在 buildingos.ioc 执行 `npm run deliver:buildingos`（构建 + 复制 + 生成 VERSION.json），到 buildingos 提交 `apps/ioc/ioc-server/`。
+- 宿主挂载的 `req.url` 修复（`keepUrl`）在 ioc-server 源码里保留，宿主式挂载的测试照旧在 ioc-server 的 `npm test` 里跑。
+- 运行时依赖白名单扫描照旧：ioc-server 的 `test/deps.test.mjs` 扫 `dist/`，允许 Node 内置、产物内相对路径、`HOST_DEPS`；外壳测试对产物再扫一次。
+  Docker / 独立启动时这些包由 `packages/ioc-server/package.json` 的 dependencies 安装，白名单同时保证宿主挂载不缺包。
+- 宿主 Dockerfile 的问题（P3-11 文档第 7 节）：外壳里是编译好的产物，`vendor/`、`templates/` 就在 `ioc-server/` 里，与 `dist/` 的相对位置固定；
+  宿主镜像复制整个 `apps/` 时一起带上。宿主循环里 `cp dist/ioc` 那一步对外壳不再发生（没有 tsconfig 就跳过）。
+
+### 15.6 Docker 镜像
+
+构建（buildingos.ioc 根目录）：
+
+```
+docker buildx build -f packages/ioc-server/docker/Dockerfile \
+  --platform linux/amd64,linux/arm64 -t <registry>/buildingos-ioc:<版本> --push .
+```
+
+- 多阶段：`build` 阶段 `FROM --platform=$BUILDPLATFORM node:22-bookworm-slim`，`npm ci` → 构建契约包、播放器、ioc-server，`npm ci --omit=dev` 装运行时依赖
+  （都是纯 JS，没有原生模块，所以只在构建机的架构上构建一次）；`runtime` 阶段 `FROM node:22-alpine`（按目标架构），只复制 `dist/`、`vendor/`、`templates/`、`public/models`、`dist-player/`、生产 `node_modules`。
+  构建机没有 arm64 也行（buildx 自带 qemu，运行阶段只是复制文件）；验收时用 qemu 在 arm64 镜像里实际跑一遍 host-check。
+- 体积估计（实测依赖大小推算）：基础镜像 node:22-alpine 约 160 MB（压缩约 55 MB）+ 运行时依赖约 27 MB + 播放器 45 MB（其中 public 约 27 MB，以后可裁剪）+ 后端与模板约 3 MB
+  → **解压约 235 MB，拉取约 100 MB**；两种架构接近。
+- 运行：非 root 用户 `node`（uid 1000）；工作目录 `/app`；**数据卷 `/data`**（`IOC_DATA_DIR=/data`）；端口 3040；`STOPSIGNAL SIGTERM`（Nest 优雅退出，写锁内的发布完成后再退）。
+- 健康检查：`HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD wget -qO- http://127.0.0.1:3040/ioc/health || exit 1`（alpine 自带 busybox wget）。
+
+环境变量：
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `IOC_AUTH` | `none` | `none` / `token` / `host`（15.3） |
+| `IOC_ADMIN_TOKEN` / `IOC_ADMIN_TOKEN_FILE` | —— | `token` 模式必填其一（≥ 32 字符） |
+| `JWT_SECRET` | `BuildingOS` | 只在 `host` 模式用，必须与宿主一致 |
+| `IOC_DATA_DIR` | 镜像 `/data`；独立启动 `./data` | 项目存储 |
+| `IOC_APP_DIR` | 镜像 `/app/player`；独立启动 `<仓库>/dist-player` | `/ioc/app/` 托管的播放器 |
+| `IOC_TEMPLATES_DIR` | 镜像 `/app/templates`；独立启动 `<仓库>/templates` | 项目模板 |
+| `IOC_PUBLIC_BASE` | `/ioc` | 对外前缀（反向代理加了子路径时改） |
+| `PORT` · `HOST` | `3040` · `0.0.0.0` | 独立进程监听；`HOST=127.0.0.1` 只给本机 |
+| `IOC_KEEP_REVISIONS` | `50` | 保留的版本数 |
+| `IOC_AI_GATEWAY` · `IOC_AI_TOKEN` | —— | 配了才启用 AI（15.7） |
+| `IOC_MQTT_URL` | —— | 只有需要宿主 MQTT 桥时才连；独立部署默认不连（P3 的 `ClientsModule` 改为按需加载） |
+
+`docker-compose` 示例（`packages/ioc-server/docker/compose.yml`）：
+
+```yaml
+services:
+  ioc:
+    image: <registry>/buildingos-ioc:0.5.0
+    restart: unless-stopped
+    ports: ["3040:3040"]
+    environment:
+      IOC_AUTH: token
+      IOC_ADMIN_TOKEN_FILE: /run/secrets/ioc_admin_token
+      NODE_OPTIONS: --max-old-space-size=512
+    volumes:
+      - ioc-data:/data                      # 树莓派：换成外接 SSD 上的目录，如 /mnt/ssd/ioc:/data
+    secrets: [ioc_admin_token]
+volumes: { ioc-data: {} }
+secrets: { ioc_admin_token: { file: ./ioc_admin_token.txt } }
+```
+
+树莓派：
+
+- 只支持 64 位系统（Raspberry Pi OS 64-bit / Ubuntu arm64，Pi 4 / Pi 5）。32 位 armv7 不出镜像（见 15.10 问题 5）。
+- 内存：服务空闲约 80 ～ 120 MB；导出 `web.zip` 时整包在内存里组装（播放器 45 MB + 项目），峰值约 300 MB。建议 **2 GB 以上**，并设 `NODE_OPTIONS=--max-old-space-size=512`。
+- **数据目录不要放 SD 卡**：每次发布都复制一份完整版本、写临时目录再 rename，SD 卡磨损快、掉电易坏。放外接 USB SSD（`ext4`，`noatime`），并定期备份整个数据目录；
+  `IOC_KEEP_REVISIONS` 可以调小（例如 20）。
+- 系统时间要准（版本时间戳、日志）：不联网时配 RTC 或本地 NTP。
+- 不跑 Docker 也行：`node packages/ioc-server/bin/ioc-server.mjs`（需要 Node 22；用 systemd 托管）。
+
+### 15.7 AI 可选
+
+- 开关：配置了 `IOC_AI_GATEWAY`（harness gateway 地址）和 `IOC_AI_TOKEN` 才启用 `/ai/*`、`/mcp`；否则这些路由返回 `404 E_AI_DISABLED`（不是 501），也不加载 AI 相关模块。
+- `GET /capabilities` 返回 `ai: true|false`；前端打开服务端项目时先取它，`ai: false` 就不渲染服务端 AI 入口（P4 的搭建页 AI 面板、演示里的「让 AI 改这一页」）。
+- 离线包（`web.zip`）和静态目录打开的项目没有服务端，一律视为 `ai: false`。
+- 大屏现有的前端 AI（`AiConsole`，关键词规则 + `sanitize`，不连服务端）属于「现有行为」，本阶段不动（见 15.10 问题 6）。
+- AI 启用后，AI 写入仍然只能写绑定的草稿、不能发布（15.3），与 `IOC_AUTH` 无关。
+
+### 15.8 与 buildingos.ai/edge 的集成
+
+默认形态：**ioc 作为独立容器放在 edge 旁边**，两者只通过 HTTP 交互，不共享进程和依赖：
+
+```
+园区边缘主机
+├─ edge（buildingos.ai/edge，TypeScript，Docker）
+└─ ioc（buildingos-ioc 镜像，/data 数据卷）  ← edge 的反向代理把 /ioc/ 转过来，或者直接开放 3040
+```
+
+- ioc 不假设 edge 的内部实现；需要的只是：一个能被访问的地址、（可选）对 `/ioc/` 的反向代理、（`host` 式鉴权时）edge 签发令牌的方式。
+- 实时数据（MQTT / TDengine）按 K17 走领域数据服务（buildingos.ai 的数据接口），ioc 不直连业务库；具体在 P7 / P8。
+- **以后是否提供库的形式**（`@buildingos/ioc-server` 导出 `createIocServer(options)`，返回 Nest 应用或 express 处理函数，由 edge 进程内挂载）：
+  等下面的问题有答案再定。进程内挂载会让 ioc 和 edge 共享 Node 版本、依赖和崩溃域，宿主挂载的 `req.url` 问题就是这类耦合的例子，所以默认不做。
+
+需要 edge 负责人回答的问题：
+
+1. edge 的主机架构和资源（x86 / arm64、内存、磁盘），每个园区一台还是多台？
+2. edge 有没有统一的反向代理 / 网关（Nginx、Traefik、自研）？ioc 挂在它后面的哪个路径？是否 https？
+3. edge 的鉴权：用户怎么登录，令牌格式（JWT？密钥？`feat/edge-jwt-renew` 分支的续期机制）？ioc 用 `token` 模式就够，还是需要认 edge 的令牌（相当于 edge 版的 `host` 模式）？
+4. 容器由谁编排（edge 自带的 compose / 自研 supervisor / k3s）？ioc 的镜像怎么送到现场（有没有镜像仓库，离线现场用 `docker save/load`？）
+5. **项目的权威副本在哪**：在云端 buildingos 编辑后下发到各园区 edge，还是在 edge 上直接编辑？需要同步时，按版本（`revision`）单向下发是否足够？
+6. 数据目录的备份和容量策略由谁负责？
+7. edge 能否给 ioc 提供实时数据接口（K17 的领域数据服务），接口规范是否已有？
+8. edge 的 Node 版本和发布节奏（只有选库形式时才相关）。
+
+### 15.9 P3B 执行步骤
+
+分步与完成标准写在 `docs/PROGRESS.md` 的「P3B」一节。每一步：`npm test` → 宿主编译检查（挂载产物） → 对新用例做变异测试 → 一步一个提交 → 更新 PROGRESS → 推送 `refactor/p3b`。
+
+### 15.10 需要负责人拍板的问题
+
+1. **`token` 模式下谁能新建 / 导入项目**：只有管理令牌（本设计），还是也允许「新建时自设口令」的匿名新建？
+2. **`host` 模式的写权限**：任何有效宿主用户都能写所有项目（本设计，不做成员），还是写也限宿主 `Admin`？
+3. **`host` 模式下前端拿宿主 JWT 的方式**：读宿主前端的 localStorage（需要知道宿主前端存令牌的 key，同源）、宿主菜单继续带 `#access_token=`，还是 A 场景干脆用 `none` / `token`？
+4. 兼容期长度：旧路径别名保留到 P4（本设计），还是 P3B 验收时直接删除（现在没有外部用户）？
+5. 树莓派是否需要 32 位（armv7）镜像？Node 22 官方镜像仍有 armv7，但 Three 场景和导出在 1 GB 内存的 32 位板子上跑不动，本设计只出 amd64 + arm64。
+6. 大屏现有的前端关键词 AI（`AiConsole`）在「AI 未配置」时要不要一起隐藏？隐藏会改变现有大屏的行为，本设计暂不动。
+7. 预览令牌直接删除（本设计）还是保留一个「限时分享」功能？
+8. Docker 镜像的仓库地址和命名（`<registry>/buildingos-ioc`）、版本号规则（跟契约包 / openapi 版本，还是独立）。
+9. 迁移冲突默认 `suffix`（保留最新、其他改名 `{p}-{u}`）还是默认 `fail`？
+10. 15.8 的 edge 问题清单转给谁回答。
 
 ---
 
