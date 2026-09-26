@@ -859,13 +859,16 @@ buildingos.ioc/
 
 | 资源 | 开发 / 独立 / Docker | 宿主挂载产物 |
 |---|---|---|
-| 契约包 | `require('../../ioc-contracts/dist/index.cjs')`（构建时先 `npm run build` 契约包；启动时找不到就报错退出，不再「contracts: missing」继续跑） | 构建时复制进产物的 `vendor/ioc-contracts/` |
+| 契约包 | `scripts/build.mjs` 把 `packages/ioc-contracts/dist/index.cjs` 复制到本包的 `vendor/ioc-contracts/`（不入库；契约包 dist 过期先重新构建），源码只有一个字面量 `require('../../vendor/ioc-contracts/index.cjs')`，require 白名单扫描不用开例外；启动时找不到就报错退出，不再「contracts: missing」继续跑 | 同一份复制进产物的 `vendor/ioc-contracts/` |
 | 模板 | 直接读仓库的 `templates/`（`IOC_TEMPLATES_DIR` 默认指向它）；启动时扫描生成清单，**去掉 `index.json` 和逐文件 sha256** | 构建时复制进产物的 `templates/` |
-| 模型（模板里没有的） | 直接读 `public/models/`（和开发服务器、导出一致） | 复制进产物的 `templates/_models/`，不再从播放器目录取、不再核对 sha256 |
+| 模型（模板里没有的） | 直接读 `public/models/`（和开发服务器、导出一致；`IOC_MODELS_DIR` 可改） | 复制进产物的 `templates/_models/`，不再从播放器目录取、不再核对 sha256 |
 | 播放器 | `dist-player/`（`IOC_APP_DIR` 默认指向它；Docker 镜像内置） | 不进产物（45 MB）：宿主用 `IOC_APP_DIR` 指向一份 `dist-player`，与 P3 相同 |
 
 产物整体有一个 `VERSION.json`（buildingos.ioc 的提交号、构建时间、各部分版本、**每个文件的 sha256**），外壳的测试核对一次；
 这是「整包一次」的核对，取代 P3 时模板、契约包各自的 sha256。`scripts/vendor-templates.mjs`、`vendor:buildingos`（契约包）删除，由 `deliver-buildingos.mjs` 取代。
+
+`packages/ioc-server` **不在根目录的 npm workspaces 里**（根 `package.json` 的 `workspaces` 改成显式列出另外四个包）：它有自己的 NestJS 依赖，放进 `packages/*` 会让根 `package-lock.json` 对不上、`npm ci` 失败。
+它和契约包一样在自己的目录里 `npm i`；它的 `package-lock.json` 由负责人在 Windows 上生成后提交（云端生成的不提交），Docker 构建（P3B-05）在那之前用 `npm install`。
 
 #### 15.5.2 buildingos `apps/ioc` 薄外壳
 
