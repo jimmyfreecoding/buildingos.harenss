@@ -830,6 +830,10 @@ can(ctx, op, target):
 
 #### 15.4.3 兼容期（只在 P3B 内，P3B 验收时删除，15.10 第 4 条）
 
+> **已结束（P3B-08）**：服务端的别名、`POST …/drafts/{d}/preview`、`/health` 的 `deprecatedHits` 都已删除，旧路径一律 404（`test/content.test.mjs`、`host-check.mjs` 核对）。
+> 前端也不再按原 id 猜新地址（迁移改过名时会猜错、打开别人的项目），打开旧地址时提示「P3 的旧地址已停用」并给出按原 id 写的新地址，改过名的以 `migration.json` 为准。
+> 没迁移的 P3 项目服务端不读，启动时警告、`/health` 的 `unmigrated` 报个数。下面是兼容期当时的设计，留作记录。
+
 - 服务端保留旧路径的**别名**（`src/http/legacy-alias.ts`，同步改写 `req.url`，排在所有中间件最前面、不包 `keepUrl`）：`/users/{u}/projects/{p}/…` → 按 `migration.json` 的映射（没有映射就用 `{p}`）内部改写到 `/projects/{新 id}/…`；
   读请求直接返回（带 `Deprecation: true`、`Link: <新地址>; rel="successor-version"`），写请求按新规则鉴权（旧 JWT 在 `host` 模式下仍然有效）。
 - `/preview/{u}/{p}/{d}/{token}/…` → 同样改写到 `/projects/{p}/drafts/{d}/content/…`，令牌忽略。
