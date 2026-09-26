@@ -1,0 +1,22 @@
+# ioc 域在 **SDK 运行时**下的用户层（P4-06b）：只接 ioc 的 MCP 端点，别的都交给 sdk profile 自己。
+#
+# 与 cordis.patch.yml 的区别：那份是给 web profile 的（webserver / 浏览器 / 代码运行时都自己配），
+# 这份给 `dsh --profile sdk`（@deepseek-ai/dsh-sdk-jsonrpc-server）：stdout 只归 JSON-RPC，
+# 所以不能加 webserver，也不要浏览器插件；只把 mcp 客户端插进来 + 限定 persona。
+- insert:
+    - id: ioc-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ioc
+        transport: streamable-http
+        url: !!js process.env.IOC_MCP_URL
+        headers:
+          Authorization: !!js ('Bearer ' + process.getBuiltinModule('node:fs').readFileSync(process.env.IOC_MCP_TOKEN_FILE, 'utf8').trim())
+        failOnStartupError: true
+
+- id: system-prompt
+  config:
+    personaSuffix: >-
+      你只通过 mcp__ioc__* 工具读写这个 IOC 项目的**草稿**（写页面、写 HTML 块、引用具名查询模板）。
+      不能发布、不能恢复版本、不能导出、不能新建或删除项目——这些只有人能做。
+      改完用 validate 确认草稿通过，然后在答复里说明改了哪些文件。

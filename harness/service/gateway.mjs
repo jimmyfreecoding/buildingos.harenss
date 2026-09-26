@@ -13,6 +13,16 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 
+/** 从各种事件形状里挑出一段可读文本（真实运行时的 message 事件形状可能是 message.content[{type,text}]） */
+function textOf(ev) {
+  const parts = [];
+  const push = (v) => { if (typeof v === 'string' && v.trim()) parts.push(v.trim()); };
+  push(ev.text);
+  const blocks = ev.message?.content ?? ev.content;
+  if (Array.isArray(blocks)) for (const b of blocks) push(typeof b === 'string' ? b : b?.text);
+  return parts.join('\n').slice(0, 4000);
+}
+
 const sse = (res) => ({ write(event) { res.write('event: ' + event.type + '\ndata: ' + JSON.stringify(event) + '\n\n'); } });
 
 /** 一个会话：DSH 运行时子进程 + 事件日志 + SSE 订阅者（P4-04 的 C4） */
@@ -58,6 +68,13 @@ class Session {
     this.child = spawn(this.opts.dshCmd, this.opts.dshArgs, { env, stdio: ['pipe', 'pipe', 'pipe'] });
     this.child.stdin.on('error', () => { /* 取消后子进程没了，EPIPE 忽略 */ });
     let buf = '';
+    // spawn 失败（运行时不在 PATH 里）会发 error 事件：必须接住，否则整个 gateway 进程崩掉
+    this.child.on('error', (e) => {
+      this.status = 'failed';
+      this.emit('error', { message: 'E_DSH_SPAWN: 起不了运行时 ' + this.opts.dshCmd + '：' + e.message });
+      for (const { reject } of this.pending.values()) reject(new Error('E_DSH_SPAWN: ' + e.message));
+      this.pending.clear();
+    });
     this.child.stdout.on('data', (chunk) => {
       buf += chunk;
       for (let i = buf.indexOf('\n'); i >= 0; i = buf.indexOf('\n')) {
@@ -68,8 +85,17 @@ class Session {
           const { resolve, reject } = this.pending.get(msg.id); this.pending.delete(msg.id);
           msg.error ? reject(new Error(msg.error.message || JSON.stringify(msg.error))) : resolve(msg.result);
         } else if (msg.method === 'session.event') {
-          const { event, ...rest } = msg.params || {};
-          this.emit(event || rest.type || 'message', rest);
+          const p = msg.params || {};
+          const ev = p.event;
+          if (ev && typeof ev === 'object') {
+            // 真实运行时给的是事件对象：type/kind 当类型，文本尽量挑出来给界面看
+            const type = String(ev.type || ev.kind || 'event');
+            const text = typeof ev.text === 'string' ? ev.text : textOf(ev);
+            this.emit(type, { ...ev, ...(text ? { text } : {}), sessionId: p.sessionId });
+          } else {
+            const { sessionId, ...rest } = p;
+            this.emit(String(ev || 'message'), { ...rest, sessionId });
+          }
         } else if (msg.method === 'session.status') {
           this.status = msg.params?.status || this.status;
           this.emit('status', { status: this.status });
@@ -81,7 +107,8 @@ class Session {
       this.status = 'stopped';
       this.emit('status', { status: 'stopped', code, signal });
     });
-    const start = this.rpc('initialize', { domain: this.domain, authCtx: this.authCtx, sessionId: this.id })
+    // 真实 SDK 运行时的 initialize 契约（@deepseek-ai/dsh-sdk-jsonrpc-server）：provider / model / cwd 必填
+    const start = this.rpc('initialize', { provider: this.opts.provider, model: this.opts.model, cwd: this.opts.cwd, ...(this.opts.reasoningEffort ? { reasoningEffort: this.opts.reasoningEffort } : {}) })
       .then((result) => {
         // ready：把运行时的自述带出来（用例据此断言 secrets 文件里的 token 真的被运行时读到了）
         this.emit('ready', { result });
@@ -95,7 +122,9 @@ class Session {
     this.env = this.env || {};
     this.status = 'running';
     this.emit('turn/start', { text });
-    const r = await this.rpc('session/prompt', { sessionId: this.id, text, pageContext });
+    // 真实运行时的 prompt 收 contentBlocks；页面上下文并进第一条文本块（模型看得到，工具参数里没有）
+    const preamble = pageContext ? '[当前页面] ' + JSON.stringify(pageContext) + '\n' : '';
+    const r = await this.rpc('session/prompt', { sessionId: this.id, contentBlocks: [{ type: 'text', text: preamble + text }] });
     this.status = 'idle';
     this.emit('turn/end', { result: r });
     return r;
@@ -122,6 +151,10 @@ export function createGateway(overrides = {}) {
     dshArgs: (process.env.DSH_ARGS ? process.env.DSH_ARGS.split(' ') : ['--profile', process.env.DSH_PROFILE || 'sdk']),
     secretsDir: process.env.DSH_SECRETS_DIR || path.join(process.env.TMPDIR || '/tmp', 'dsh-secrets'),
     mcpUrl: process.env.IOC_MCP_URL,
+    provider: process.env.IOC_DSH_PROVIDER || 'deepseek-official',
+    model: process.env.IOC_DSH_MODEL || 'deepseek-chat',
+    cwd: process.env.IOC_DSH_CWD || '/data/work',
+    reasoningEffort: process.env.IOC_DSH_REASONING || undefined,
     maxSessions: Number(process.env.GATEWAY_MAX_SESSIONS || 2),
     port: Number(process.env.GATEWAY_PORT || 8090),
     ...overrides,

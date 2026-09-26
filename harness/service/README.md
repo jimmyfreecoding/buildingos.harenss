@@ -44,3 +44,36 @@ node --test harness/service/test/gateway.test.mjs
 - P4-05：dsh-ioc profile 与镜像（`harness/domains/ioc/`、`harness/image/`）；
 - P4-06：端到端（真模型 + ioc-server 的 `/mcp`）；
 - 上游 SDK 运行时补上 `session/cancel` / `session/resume` 后，取消与续接可以简化（V0-4 已记）。
+
+## 真 DSH 实测（P4-06b，2026-09-26）
+
+本机的 DSH 是**源码构建的镜像** `netops-infra-harness:latest`（3.24 GB，DSH 提交 `c291e79`，node 22 + `dsh` CLI）。
+里面**没有** V0-4 用的那个预编译 SDK 运行时二进制，但装了官方 SDK profile：
+`@deepseek-ai/dsh-sdk-jsonrpc-server`（stdio JSON-RPC，按 sessionId 开会话、转发会话事件、`shutdown` 退出 0）。**协议名与 gateway 完全一致**：
+`initialize` / `session/prompt` / `shutdown` + 通知 `session.event` / `session.status`。实测确认的参数契约：
+
+| 方法 | 参数（实测） | 返回 |
+|---|---|---|
+| `initialize` | `{ provider, model, cwd, reasoningEffort? }` —— **三个必填**，缺一个报 `paths[0] must be of type string` | `{ serverInfo }` |
+| `session/prompt` | `{ sessionId, contentBlocks: [{ type: 'text', text }] }` | `{ messageId }` |
+| 通知 | `session.event { sessionId, event: { type, data, time } }`、`session.status { sessionId, status }` | —— |
+
+gateway 已按这个契约对齐（原先按 V0-4 spike 写的 `{ domain, authCtx, sessionId }` 参数是错的）。
+另外修了一个**真 bug**：运行时进程起不来时（例如 `DSH_CMD` 写错）未处理的 `error` 事件会把整个 gateway 打崩，
+现在会回 500 `E_UPSTREAM` 并保持存活（用例 `运行时起不来：建会话回 500 E_UPSTREAM，gateway 自己不能崩`）。
+
+### 建议的容器跑法
+
+见 `harness/service/dsh-container-entry.sh`：Windows 上跑不了 Linux 运行时，所以 **gateway 与 DSH 同容器**；
+容器用 `host.docker.internal:<端口>` 访问宿主机的 ioc-server；宿主机的 `~/.dsh/.credentials.yaml` 挂到 `/run/secrets` 由入口脚本以 600 装进 `$DSH_HOME`。
+DSH 的 SDK profile 用 `dsh plugin --profile sdk add @deepseek-ai/dsh-sdk-app` + `… add @deepseek-ai/dsh-mcp-client` 建（入口脚本幂等）。
+
+### 已验证 / 未通
+
+- ✅ 模型凭据可用：`dsh --profile headless "…"` 在容器里拿到真答复（宿主机凭据，未用 Anthropic 兼容端点）。
+- ✅ gateway ↔ SDK 运行时握手：`initialize` 成功、会话创建返回 `{ session_id, status: 'idle' }`。
+- ✅ 提示送达：运行时事件 `agent/inbox/spliced` 里就是 gateway 发的文本（`contentBlocks` 形状正确）。
+- ✅ MCP `failOnStartupError` 有效：token 不对时整棵插件树加载失败、会话起不来（不会静默降级）。
+- ⛔ **未通**：真会话里 `turn/start` 之后直接 `turn/end`，**没有任何助手消息、也没有模型调用事件**（换 `deepseek-chat` / `deepseek-flash` 一样）。
+  下一步排查方向（按可能性）：① 用 DSH 自己的日志级别/`--dump-config` 看 SDK profile 的模型路由；② `approval/policy: ask` 是否让首轮就停住（试 patch 成自动）；
+  ③ 试官方 **`sdk-minimal`** bundle（镜像里也有，专为 SDK 客户端设计，模型由 initialize 指定）；④ 看 `agents.create` 的 `agentOptions` 是否需要显式带上模型。

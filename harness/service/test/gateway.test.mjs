@@ -154,6 +154,16 @@ test('并发上限：满了先排队，取消后自动放行', async t => {
   assert.equal(gw.running(), 1);
 });
 
+test('运行时起不来：建会话回 500 E_UPSTREAM，gateway 自己不能崩', async t => {
+  const { http } = await start(t, { dshCmd: 'definitely-not-a-real-runtime-' + Date.now() });
+  const r = await http('POST', '/v1/sessions', { domain: 'ioc', mcp: { token: 't' } });
+  assert.equal(r.status, 500);
+  assert.equal(r.data.code, 'E_UPSTREAM');
+  assert.match(String(r.data.message), /E_DSH_SPAWN/);
+  // 进程还活着：能力接口照样能答
+  assert.equal((await http('GET', '/v1/capabilities')).status, 200);
+});
+
 test('不认识的接口 404', async t => {
   const { http } = await start(t);
   assert.equal((await http('GET', '/v1/nope')).status, 404);
