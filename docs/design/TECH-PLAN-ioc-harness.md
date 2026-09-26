@@ -690,7 +690,7 @@ Smart → 吉行（包括 `jixing-twin`）→ relian → houston；另外**在 P
 | 场景 | 形态 | 前端 | 数据 | 默认 `IOC_AUTH` |
 |---|---|---|---|---|
 | A 宿主挂载（现状，保留） | buildingos 以 `local_module` 挂载 `apps/ioc` 薄外壳，外壳加载 buildingos.ioc 构建好的后端产物 | 宿主托管 `/ioc/app/`（`IOC_APP_DIR`） | `IOC_DATA_DIR`（宿主机上的目录） | `none`（可改 `host`） |
-| B 大型部署：云端 buildingos + 园区边缘 buildingos.ai/edge | ioc 后端作为**独立容器**跑在每个园区的 edge 旁边（15.8） | 镜像内置播放器，容器直接托管 | 容器数据卷 `/data` | `token`（跨网访问时）或 `none`（仅园区内网） |
+| B 大型部署：云端 buildingos + 园区边缘 buildingos.ai/edge | **暂缓**（2026-09-26）：以后考虑融入 edge 的后台服务，届时评估独立容器还是并入 edge 进程（15.8）。现阶段只做 Docker 独立启动 | 镜像内置播放器，容器直接托管 | 容器数据卷 `/data` | `token`（跨网访问时）或 `none`（仅园区内网） |
 | C 非楼宇项目（仓库等）：树莓派 | 前后端同一个容器（或 `node` 直接启动），不要 buildingos | 同上 | 外接 SSD 上的目录 | `none`（内网）/ `token` |
 
 **buildingos.ioc 是 IOC 产品的全部源码**（前端、后端、契约、模板、播放器），一个仓库产出三种交付物：宿主挂载产物、多架构 Docker 镜像、可直接 `node` 启动的目录。
@@ -896,15 +896,15 @@ buildingos/apps/ioc/
 构建（buildingos.ioc 根目录）：
 
 ```
-docker buildx build -f packages/ioc-server/docker/Dockerfile \
-  --platform linux/amd64,linux/arm64 --provenance=false --sbom=false \
-  --output type=image,name=docker.cnb.cool/geeqee2025/ioc-server:<版本>,oci-mediatypes=false,push=true .
+node packages/ioc-server/docker/build.mjs --load                 # 本阶段：本机架构，本地镜像 ioc-server:<版本>，不推送
+# 以后定了仓库再推（build.mjs 保留推送能力）：
+node packages/ioc-server/docker/build.mjs --image <仓库>/ioc-server --platform linux/amd64,linux/arm64 --push
 ```
 
 - 多阶段：`build` 阶段 `FROM --platform=$BUILDPLATFORM node:22-bookworm-slim`，`npm ci` → 构建契约包、播放器、ioc-server，`npm ci --omit=dev` 装运行时依赖
   （都是纯 JS，没有原生模块，所以只在构建机的架构上构建一次）；`runtime` 阶段 `FROM node:22-alpine`（按目标架构），只复制 `dist/`、`vendor/`、`templates/`、`public/models`、`dist-player/`、生产 `node_modules`。
   构建机没有 arm64 也行（buildx 自带 qemu，运行阶段只是复制文件）；验收时用 qemu 在 arm64 镜像里实际跑一遍 host-check。
-- 仓库与版本（15.10 第 8 条）：`docker.cnb.cool/geeqee2025/ioc-server:<版本>`（以负责人最终确认的名字为准），版本号独立编号（从 `0.5.0` 起），另打 `latest`；
+- 仓库与版本（15.10 第 8 条）：**仓库暂不定，本阶段只在本机构建运行、不推送**，本地镜像名 `ioc-server:<版本>`；版本号独立编号（从 `0.5.0` 起），另打 `latest`；
   label：`org.opencontainers.image.version`、`org.opencontainers.image.revision`（buildingos.ioc 提交号）、`io.buildingos.ioc.contracts`（契约包版本）、`io.buildingos.ioc.openapi`（openapi 版本）。
   CNB 只收 Docker 原生清单（buildingos.ai 的 `build-edge-frontend.yml` 注释）：推送时关 provenance / sbom，多架构清单用 `oci-mediatypes=false`（Docker manifest list）。
 - **实测（P3B-05）**：拉取约 108 MB（amd64、arm64 接近）；解压约 260 MB（基础镜像 160 + 生产依赖 54 + 播放器 45 + 后端与模板 2）。构建机在 TLS 拦截代理后面时，`docker/build.mjs --ca <证书>` 以 BuildKit secret 传给构建阶段的 npm，不进镜像。
@@ -934,7 +934,7 @@ docker buildx build -f packages/ioc-server/docker/Dockerfile \
 ```yaml
 services:
   ioc:
-    image: docker.cnb.cool/geeqee2025/ioc-server:0.5.0
+    image: ioc-server:0.5.0-dev            # 本机构建的镜像（仓库暂不定，15.10 第 8 条）
     restart: unless-stopped
     ports: ["3040:3040"]
     environment:
@@ -965,12 +965,13 @@ secrets: { ioc_admin_token: { file: ./ioc_admin_token.txt } }
 - 大屏现有的前端 AI（`AiConsole`，关键词规则 + `sanitize`，不连服务端）属于「现有行为」，本阶段不动，P4 再定（15.10 第 6 条）。
 - AI 启用后，AI 写入仍然只能写绑定的草稿、不能发布（15.3），与 `IOC_AUTH` 无关。
 
-### 15.8 与 buildingos.ai/edge 的集成
+### 15.8 与 buildingos.ai/edge 的集成（**暂缓**，负责人 2026-09-26）
 
-结论先行：**ioc 作为独立容器，加进 edge 的 docker compose、接在同一个 Docker 网络上，只走 HTTP** —— 这个默认形态合适，只需要补两点：
-一是 edge 的 nginx 已经把 `/ioc/` 用来托管 IOC 前端静态文件，ioc 后端的路径要和它错开（见下面「对 edge 的改动建议」）；
-二是 edge 的 Node 20 在现场是 CentOS 7.4 的 3.10 内核上跑的，ioc 镜像（Node 22）要在同样的内核上实测一次（P3B-07）。
-不做库的形式：edge 后端是独立的 NestJS 11 进程（有自己的 `/api` 前缀、JWT 策略、Docker socket 挂载），进程内挂载的耦合面比 buildingos 宿主还大，没有收益。
+**现阶段只做 `packages/ioc-server` 的 Docker 独立启动，edge 暂时不考虑。** 以后考虑把 ioc 后端融入 edge 的后台服务（edge 后端是 NestJS 11 + Node 20），
+届时再评估是「独立容器（接在 edge 的 compose 网络上，只走 HTTP）」还是「并入 edge 进程 / 以库的形式提供」。
+原先写的「不做库的形式」的结论撤回，改为**届时再评估**。
+
+下面是 P3B-01 时查到的 edge 事实，**留作以后评估的参考**；其中的建议和待定问题都暂缓，现在不需要答复。
 
 以下答案来自 buildingos.ai 仓库 `edge/` 目录（提交 ef1328a，只读；未改动该仓库）：
 
@@ -988,7 +989,7 @@ secrets: { ioc_admin_token: { file: ./ioc_admin_token.txt } }
 专门确认的几点：
 
 - **a) 运行时**：Node 20 + NestJS 11，全局前缀 `/api`，端口 7829；nginx 反代；compose 单机，网络 `buildingos-network`。ioc 容器加进同一网络即可互通。
-  老内核（CentOS 7.4 / 3.10）的 seccomp 曾拦截 nginx 的 `pwrite`（frontend 用了 `seccomp:unconfined`）：ioc 镜像在这个内核上的表现要在 P3B-07 实测。
+  老内核（CentOS 7.4 / 3.10）的 seccomp 曾拦截 nginx 的 `pwrite`（frontend 用了 `seccomp:unconfined`）：以后融入 edge 时，ioc 在这个内核上的表现要实测（原定 P3B-07，已随 edge 暂缓）。
 - **b) 身份**：edge 自己的登录是写死的单一管理员，JWT 不可配置；ioc 不接它，用 `IOC_AUTH=token`（管理令牌放 compose secret，编辑口令按项目设）。
   云端平台 JWT 是 edge 与云端之间的凭据，ioc 不碰。
 - **c) MQTT / TDengine / PG**：见上表第 7 条。地址用容器名（`emqx`、`tdengine`、`postgres`），凭据在 compose 环境变量里；PG 是只读影子库，ioc 不应写它。
@@ -996,7 +997,7 @@ secrets: { ioc_admin_token: { file: ./ioc_admin_token.txt } }
   以后要「云端下发项目版本」时，最省事的是把导出的项目包当成一种素材（`asset_type` 新增一类）走 ② 下发，再由 ioc 导入；但这属于「云→边」配置流，要先和 edge 负责人确认（本阶段不做）。
 - **e) 硬件**：现场 x86_64；edge 没有 arm 镜像。ioc 出 amd64 + arm64（arm64 给树莓派），**不需要 armv7 或其他变体**。
 
-对 edge 的改动建议（不在本仓库做，交给 edge 负责人决定）：
+对 edge 的改动建议（**暂缓**；只是 P3B-01 时按「独立容器」形态写的草案，以后评估融合方式时再看，不在本仓库做）：
 
 1. `edge/docker/docker-compose.yml` 加一个 `ioc` 服务：镜像 `docker.cnb.cool/geeqee2025/…/ioc-server`（15.6），网络 `buildingos-network`，数据卷 `ioc_data:/data`（或绑定到 `/data/buildingos/ioc`），`IOC_AUTH=token`，管理令牌用 compose secret；不需要对外开端口（走 nginx）。
 2. `edge/web/nginx.conf`：现在 `/ioc/` 整个是静态目录。ioc 后端的接口（`/ioc/projects/`、`/ioc/templates`、`/ioc/schemas/`、`/ioc/health`、`/ioc/capabilities`、`/ioc/live`、`/ioc/app/`）需要转给 `ioc:3040`，
@@ -1004,7 +1005,7 @@ secrets: { ioc_admin_token: { file: ./ioc_admin_token.txt } }
    长期看，ioc 镜像自带播放器（`/ioc/app/`），edge-frontend 里的 `ioc-zip` 可以去掉，改为 `/ioc/` 整个转给 ioc 容器——这样 IOC 前端的版本跟着 ioc 镜像走。
 3. 备份：把 ioc 的数据卷加进现有的 `/data/backup` 打包流程。
 
-代码里找不到答案、需要负责人决定的：
+代码里找不到答案的问题（**暂缓**，以后评估融合时再问，现在不需要答复）：
 
 1. edge 上 ioc 的对外路径：沿用 `/ioc/`（和 edge 自带的 IOC 静态前端分路由），还是用 ioc 容器整体接管 `/ioc/`（去掉 edge-frontend 里的 `ioc-zip`）？
 2. ioc 的服务要不要写进 buildingos.ai 的 edge compose（由 edge 负责人改），还是 ioc 单独提供一个 compose 片段让现场合并？
@@ -1012,6 +1013,11 @@ secrets: { ioc_admin_token: { file: ./ioc_admin_token.txt } }
 4. 以后「云端下发项目版本」是否借用文件素材同步（新增一种 `asset_type`），还是另做；是否符合「云→边只下发配置」的约束。
 5. edge 的备份策略是否要正式化（现在是手工 tar）。
 6. P7/P8 取实时数据：ioc（或领域数据服务）直接连 `tdengine` / `emqx`，还是由 edge 后端提供只读查询接口。
+
+风险提示（**不在本项目范围**，供 edge 负责人参考）：edge 管理后台的管理员账号 `admin / admin123` 和 JWT 签名密钥都写死在代码里
+（`edge/server/src/auth/auth.service.ts`、`auth/constants.ts`），compose 里的 `JWT_SECRET` 环境变量没有被使用——
+能访问 edge 管理端口的人都能用默认账号登录，也能用公开的密钥自己签令牌。以后 ioc 融入 edge 时不要沿用这套凭据。
+
 
 ### 15.9 P3B 执行步骤
 
@@ -1028,9 +1034,9 @@ secrets: { ioc_admin_token: { file: ./ioc_admin_token.txt } }
 | 5 | 32 位 armv7 | 不出，只出 amd64 + arm64 | 15.6 |
 | 6 | 大屏现有的前端 AI（`AiConsole`） | 这次不动，P4 再定 | 15.7 |
 | 7 | 预览令牌、`ioc_view` cookie | 删除（照设计） | 15.3；P3B-04 |
-| 8 | 镜像仓库和版本号 | **CNB：`docker.cnb.cool/geeqee2025/ioc-server`**（以负责人最终确认的名字为准；edge 现有镜像在 `docker.cnb.cool/geeqee2025/buildingos.img/` 下，见 15.8 问题 3）。**版本号独立编号**（从 `0.5.0` 起），契约包版本、openapi 版本写进镜像 label | 15.6 |
+| 8 | 镜像仓库和版本号 | **仓库地址暂不定，本阶段只在本机构建和运行、不推送**（2026-09-26 更新；原定 CNB `docker.cnb.cool/geeqee2025/ioc-server`）。`docker/build.mjs` 保留推送能力（`--image`、`--push`），镜像名先用本地名 `ioc-server`。**版本号独立编号**（从 `0.5.0` 起），契约包版本、openapi 版本写进镜像 label | 15.6 |
 | 9 | 迁移冲突默认 | **默认 `fail`**，同时支持 `--on-conflict=suffix` 和 `--map` 手工映射 | 15.2.2 |
-| 10 | edge 问题清单 | 答案在 buildingos.ai 的 `edge/`，已逐条回答（15.8）；代码里找不到的 6 条单独列出待定。拿到最终答复前按「**近期以 edge 为权威副本、云端只存模板和备份，以后再做版本下发**」推进，不做同步功能 | 15.8 |
+| 10 | edge 问题清单 | **暂缓**（2026-09-26 更新）：现阶段只做 ioc-server 的 Docker 独立启动，edge 暂时不考虑；以后考虑融入 edge 的后台服务，届时再评估独立容器还是并入 edge 进程 / 以库的形式提供。已查到的 edge 事实留在 15.8 作参考，6 个待定问题和改动建议暂缓。不做同步功能 | 15.8 |
 
 ---
 
