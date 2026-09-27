@@ -3,6 +3,31 @@
 # 与 cordis.patch.yml 的区别：那份是给 web profile 的（webserver / 浏览器 / 代码运行时都自己配），
 # 这份给 `dsh --profile sdk`（@deepseek-ai/dsh-sdk-jsonrpc-server）：stdout 只归 JSON-RPC，
 # 所以不能加 webserver，也不要浏览器插件；只把 mcp 客户端插进来 + 限定 persona。
+# ── 审批策略：改成自动（IOC 的 AI 没人盯着键盘）──────────────────
+# SDK profile 默认是 `@deepseek-ai/dsh-user-approval` + policy=ask：agent 每次调工具都要人批一下，
+# 而 IOC 的 AI 是「只写草稿、发布由人点」，所以这里加一个 preset `ioc` = 沙箱仍 workspace-write、审批 never，
+# 并设为 defaultPreset。注意 patch 会**替换整块 config**，所以原有的三个 preset 要重述一遍。
+- id: approval
+  config:
+    policy: never
+
+- id: permission
+  config:
+    defaultPreset: ioc
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+      ioc:
+        sandbox: workspace-write
+        approval: never
+
 - insert:
     - id: ioc-mcp
       name: '@deepseek-ai/dsh-mcp-client'

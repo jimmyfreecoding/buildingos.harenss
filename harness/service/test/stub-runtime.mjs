@@ -51,6 +51,8 @@ process.stdin.on('data', async (chunk) => {
       catch (e) { write = { ok: false, detail: String(e?.message || e) }; }
       notify('session.event', { sessionId: sid, event: { type: 'tool_result', tool: 'mcp__ioc__write_block', ok: write.ok, detail: write.detail } });
       out({ jsonrpc: '2.0', id: msg.id, result: { messageId: 'm_' + Date.now() } });
+      // 真实运行时的顺序：先回 messageId，之后才把「一轮结束」当事件发出来
+      notify('session.event', { sessionId: sid, event: { type: 'turn/end', seq: 2, data: { turn: 1, reason: { kind: 'completed' } } } });
       notify('session.status', { sessionId: sid, status: 'idle' });
     } else if (msg.method === 'shutdown') {
       out({ jsonrpc: '2.0', id: msg.id, result: { ok: true } });

@@ -74,6 +74,16 @@ DSH 的 SDK profile 用 `dsh plugin --profile sdk add @deepseek-ai/dsh-sdk-app` 
 - ✅ gateway ↔ SDK 运行时握手：`initialize` 成功、会话创建返回 `{ session_id, status: 'idle' }`。
 - ✅ 提示送达：运行时事件 `agent/inbox/spliced` 里就是 gateway 发的文本（`contentBlocks` 形状正确）。
 - ✅ MCP `failOnStartupError` 有效：token 不对时整棵插件树加载失败、会话起不来（不会静默降级）。
-- ⛔ **未通**：真会话里 `turn/start` 之后直接 `turn/end`，**没有任何助手消息、也没有模型调用事件**（换 `deepseek-chat` / `deepseek-flash` 一样）。
-  下一步排查方向（按可能性）：① 用 DSH 自己的日志级别/`--dump-config` 看 SDK profile 的模型路由；② `approval/policy: ask` 是否让首轮就停住（试 patch 成自动）；
-  ③ 试官方 **`sdk-minimal`** bundle（镜像里也有，专为 SDK 客户端设计，模型由 initialize 指定）；④ 看 `agents.create` 的 `agentOptions` 是否需要显式带上模型。
+- ✅ **已通（同一个真模型）**：会话 → 模型 → `mcp__ioc__*` 工具 → 草稿。事件流：`step/start → user/message → request/header → assistant/message → tool/call → tool/result → step/end → turn/end`，草稿里真的写出 `blocks/dsh-note.html`，且 AI 没有发布（rev 不变）。
+
+### 打通它要的三个条件（都踩过）
+
+1. **`DSH_CMD=dsh`**：镜像里是 CLI，不是 V0-4 那个预编译 SDK 二进制（默认名会 ENOENT）。
+2. **模型密钥走环境变量**：SDK profile 的 `llm-deepseek` 读 `DEEPSEEK_API_KEY`（凭据文件那条路在 SDK 组装里走不通），容器里从 `/run/secrets/deepseek-api-key` 读进去。
+3. **审批策略**：`@deepseek-ai/dsh-user-approval` 默认 `ask`（agent 每次调工具都要人批）→ `harness/domains/ioc/sdk.patch.yml` 里加 preset `ioc`（沙箱仍 `workspace-write`、审批 `never`）并设 `defaultPreset: ioc`。注意 patch 会**替换整块 config**，原有三个 preset 必须重述。
+
+**gateway 侧两个真 bug（都已修）**：
+
+- `session/prompt` 的返回只是「消息已入队」（`{ messageId }`），**不代表这一轮结束**；gateway 原来在这里合成了一个 `turn/end`，调用方（面板 / 测试驱动）于是立刻停下，模型的动作一个都看不到。现在只发 `turn/accepted`，`turn/end` 一律转发运行时自己的。
+- 运行时的事件自带 `seq`，原来会**覆盖** gateway 自己的单调 `seq`（`since` 续接与排序都乱）；现在 gateway 的 `seq` 权威，运行时的记成 `sourceSeq`。
+

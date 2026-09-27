@@ -42,7 +42,10 @@ class Session {
     this.closed = false;
   }
   emit(type, payload = {}) {
-    const event = { seq: ++this.seq, type, ...payload };
+    // 运行时的事件自带 seq：不能让它覆盖我们自己的单调 seq（否则 since 续接与排序都乱），
+    // 把它记成 sourceSeq 供排查
+    const { seq: sourceSeq, ...rest } = payload;
+    const event = { seq: ++this.seq, type, ...rest, ...(sourceSeq !== undefined ? { sourceSeq } : {}) };
     this.events.push(event);
     for (const sub of this.subs) { try { sub.write(event); } catch { /* 断开的连接自己会清理 */ } }
     return event;
@@ -81,6 +84,7 @@ class Session {
         const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
         if (!line) continue;
         let msg; try { msg = JSON.parse(line); } catch { continue; }
+        if (process.env.GATEWAY_DEBUG === '1') process.stderr.write('[dsh->gw] ' + line.slice(0, 300) + '\n');
         if (msg.id !== undefined && this.pending.has(msg.id)) {
           const { resolve, reject } = this.pending.get(msg.id); this.pending.delete(msg.id);
           msg.error ? reject(new Error(msg.error.message || JSON.stringify(msg.error))) : resolve(msg.result);
@@ -125,8 +129,10 @@ class Session {
     // 真实运行时的 prompt 收 contentBlocks；页面上下文并进第一条文本块（模型看得到，工具参数里没有）
     const preamble = pageContext ? '[当前页面] ' + JSON.stringify(pageContext) + '\n' : '';
     const r = await this.rpc('session/prompt', { sessionId: this.id, contentBlocks: [{ type: 'text', text: preamble + text }] });
-    this.status = 'idle';
-    this.emit('turn/end', { result: r });
+    // 注意：session/prompt 的返回只是「消息已入队」（{ messageId }），**不代表这一轮结束**。
+    // 助手消息、工具调用、真正的 turn/end 都在之后以 session.event 通知进来——
+    // 早先这里合成过一个 turn/end，结果调用方（面板/驱动）在这里就停了，模型的动作全看不到。
+    this.emit('turn/accepted', { result: r });
     return r;
   }
   /** 取消 = 结束这个会话的运行时进程（V0-4：SDK 运行时不支持 session/cancel） */

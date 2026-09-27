@@ -15,7 +15,9 @@
 # 坑：DSH_CMD 一定要写成 dsh —— 镜像里是 CLI，不是 V0-4 那个预编译 SDK 二进制（默认名会 ENOENT）。
 set -e
 export DSH_HOME=/data/dsh
-install -m 600 /run/secrets/dsh-credentials.yaml $DSH_HOME/.credentials.yaml && echo '[gw] 凭据已装（600）'
+# DEEPSEEK_API_KEY：SDK profile 的 llm-deepseek 读的是这个环境变量（凭据文件那条路走不通）
+if [ -f /run/secrets/deepseek-api-key ]; then export DEEPSEEK_API_KEY=$(cat /run/secrets/deepseek-api-key); echo "[gw] DEEPSEEK_API_KEY 已装载（长度 ${#DEEPSEEK_API_KEY}，不打印）"; fi
+install -m 600 /run/secrets/dsh-credentials.yaml $DSH_HOME/.credentials.yaml 2>/dev/null || true && echo '[gw] 凭据已装（600）'
 mkdir -p /data/work /data/secrets
 cd /opt/dsh
 if [ ! -f $DSH_HOME/profiles/sdk/package.json ]; then
