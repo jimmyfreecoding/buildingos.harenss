@@ -156,6 +156,8 @@ export function createGateway(overrides = {}) {
     cwd: process.env.IOC_DSH_CWD || '/data/work',
     reasoningEffort: process.env.IOC_DSH_REASONING || undefined,
     maxSessions: Number(process.env.GATEWAY_MAX_SESSIONS || 2),
+    // 浏览器里的控制台（/ioc/console）直接调这个 gateway，所以要跨域头；GATEWAY_ALLOW_ORIGIN 可收紧
+    allowOrigin: process.env.GATEWAY_ALLOW_ORIGIN || '*',
     port: Number(process.env.GATEWAY_PORT || 8090),
     ...overrides,
   };
@@ -197,6 +199,12 @@ export function createGateway(overrides = {}) {
   }
 
   const server = createServer(async (req, res) => {
+    // CORS：控制台在另一个源上（开发时 3888，线上由 ioc-server 托管），预检也要答
+    res.setHeader('access-control-allow-origin', opts.allowOrigin);
+    res.setHeader('access-control-allow-methods', 'GET, POST, DELETE, OPTIONS');
+    res.setHeader('access-control-allow-headers', 'content-type, authorization');
+    res.setHeader('vary', 'Origin');
+    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
     const url = new URL(req.url, 'http://localhost');
     const parts = url.pathname.split('/').filter(Boolean); // v1 / sessions / {id} / (messages|stream|cancel)
     try {

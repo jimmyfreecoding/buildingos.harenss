@@ -164,6 +164,16 @@ test('运行时起不来：建会话回 500 E_UPSTREAM，gateway 自己不能崩
   assert.equal((await http('GET', '/v1/capabilities')).status, 200);
 });
 
+test('CORS：预检 204，普通响应带跨域头（浏览器里的控制台要直接调它）', async t => {
+  const { base, http } = await start(t);
+  const pre = await fetch(base + '/v1/sessions', { method: 'OPTIONS', headers: { origin: 'http://127.0.0.1:3888', 'access-control-request-method': 'POST' } });
+  assert.equal(pre.status, 204);
+  assert.equal(pre.headers.get('access-control-allow-origin'), '*');
+  assert.match(pre.headers.get('access-control-allow-methods') || '', /POST/);
+  const caps = await fetch(base + '/v1/capabilities');
+  assert.equal(caps.headers.get('access-control-allow-origin'), '*');
+});
+
 test('不认识的接口 404', async t => {
   const { http } = await start(t);
   assert.equal((await http('GET', '/v1/nope')).status, 404);
