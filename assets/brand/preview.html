@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>H2Z Tech · Logo 方案预览</title>
+<style>
+  :root{ --navy:#0A1A2F; --navy2:#0F2A4A; --amber:#F59E0B; --gray:#64748B; --line:#E2E8F0; }
+  *{box-sizing:border-box}
+  body{margin:0;background:#F8FAFC;color:#0F172A;font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial,sans-serif}
+  header{background:var(--navy);color:#fff;padding:26px 32px}
+  header h1{margin:0;font-size:22px;letter-spacing:1px}
+  header p{margin:6px 0 0;color:#94A3B8;font-size:13px}
+  main{padding:26px 32px 60px;max-width:1180px;margin:0 auto}
+  section{margin-bottom:38px}
+  h2{font-size:15px;letter-spacing:.5px;color:var(--navy);border-left:4px solid var(--amber);padding-left:10px;margin:0 0 14px}
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+  .card .cap{font-size:12px;color:var(--gray);letter-spacing:.4px}
+  .card img{max-width:100%;height:auto}
+  .dark{background:var(--navy);border-color:var(--navy2)}
+  .dark .cap{color:#94A3B8}
+  .amberbg{background:var(--amber);border-color:#D97706}
+  .amberbg .cap{color:#7C2D12}
+  .center{align-items:center;justify-content:center}
+  .fav{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+  .fav div{text-align:center;font-size:11px;color:var(--gray)}
+  /* 名片模拟 */
+  .biz{width:350px;height:200px;border-radius:10px;position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(10,26,47,.18);padding:18px;display:flex;flex-direction:column;justify-content:space-between}
+  .biz.white{background:#fff;border:1px solid var(--line)}
+  .biz.navy{background:var(--navy);color:#fff}
+  .biz img{height:34px;width:auto}
+  .biz .who{font-size:12.5px;line-height:1.6;color:#334155}
+  .biz.navy .who{color:#CBD5E1}
+  .biz .name{font-weight:800;font-size:14px;color:var(--navy)}
+  .biz.navy .name{color:#fff}
+  .amberline{position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--amber)}
+  /* 车身模拟 */
+  .truck{background:var(--navy);border-radius:14px;padding:26px 30px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+  .truck .phone{font-size:34px;font-weight:900;color:#fff;letter-spacing:1px}
+  .truck .phone small{display:block;font-size:11px;font-weight:600;color:var(--amber);letter-spacing:3px}
+  .truck img{height:74px;width:auto}
+  /* 网站 header 模拟 */
+  .web{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+  .web .bar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line)}
+  .web .bar img{height:30px}
+  .web nav{display:flex;gap:18px;font-size:13px;color:#334155}
+  .web .hero{padding:26px 20px 30px;background:linear-gradient(180deg,#fff, #F1F5F9)}
+  .web .hero h3{margin:0 0 8px;font-size:18px;color:var(--navy)}
+  .web .hero p{margin:0;color:var(--gray);font-size:13px;max-width:640px;line-height:1.6}
+  .web .cta{display:inline-block;margin-top:14px;background:var(--amber);color:#3B1D00;font-weight:700;font-size:13px;padding:9px 16px;border-radius:8px}
+  /* 规范 */
+  table{border-collapse:collapse;width:100%;font-size:13px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+  th{background:#F1F5F9;color:var(--gray);font-weight:600}
+  .sw{display:flex;gap:14px;flex-wrap:wrap}
+  .sw div{width:150px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;font-size:12px}
+  .sw .chip{height:64px}
+  .sw .m{padding:8px 10px;color:#334155;line-height:1.5}
+  .dont{display:grid;gap:12px;grid-template-columns:repeat(4,1fr)}
+  @media(max-width:900px){.dont{grid-template-columns:1fr 1fr}}
+  .dont .x{background:#fff;border:1px dashed #FCA5A5;border-radius:10px;padding:14px;font-size:12px;color:#B91C1C;text-align:center}
+  .note{font-size:12.5px;color:var(--gray);line-height:1.7;background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1>H2Z TECH · Logo 设计方案</h1>
+  <p>主推方案 A（六边形节点）＋ 备选 B（H→Z 流动）／ C（镜头光圈）· 全部为矢量 SVG，可直接缩放与印刷</p>
+</header>
+<main>
+
+<section>
+  <h2>字标写法对照（同一个六边形，只差 "2" 的位置）</h2>
+  <div class="grid g2">
+    <div class="card center">
+      <span class="cap">✅ H²Z · 上标版（当前默认）</span>
+      <svg viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="H2Z superscript">
+        <rect width="200" height="200" rx="41" fill="#0A1A2F"/>
+        <polygon points="100,28 162.35,64 162.35,136 100,172 37.65,136 37.65,64" fill="none" stroke="#F59E0B" stroke-width="4.7"/>
+        <text x="100" y="118" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="59" fill="#FFFFFF">H<tspan fill="#F59E0B" font-size="41" dy="-14">2</tspan><tspan dy="14">Z</tspan></text>
+      </svg>
+      <span class="cap">"2" 缩小上提 + 安全橙 → 化学式 / 科技品牌感</span>
+    </div>
+    <div class="card center">
+      <span class="cap">H₂Z · 下标版（备选）</span>
+      <svg viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="H2Z subscript">
+        <rect width="200" height="200" rx="41" fill="#0A1A2F"/>
+        <polygon points="100,28 162.35,64 162.35,136 100,172 37.65,136 37.65,64" fill="none" stroke="#F59E0B" stroke-width="4.7"/>
+        <text x="100" y="112" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="59" fill="#FFFFFF">H<tspan fill="#F59E0B" font-size="41" dy="11">2</tspan><tspan dy="-11">Z</tspan></text>
+      </svg>
+      <span class="cap">"2" 缩小下移 → 更接近 H₂O 的写法</span>
+    </div>
+  </div>
+  <div class="note" style="margin-top:14px">下方所有标识与应用模拟均为 <b>H²Z 上标版</b>。若要切回下标版，说一声即可（一改全改）。</div>
+</section>
+
+<section>
+  <h2>主推方案 A · 六边形节点（网络节点 + 防护盾）</h2>
+  <div class="grid g2">
+    <div class="card"><span class="cap">A1 横向主标识（网站 / 名片 / 合同）</span><img src="a-lockup-horizontal.svg" alt="A 横向"></div>
+    <div class="card center"><span class="cap">A2 堆叠版（正方形 / 竖版 / 大屏角标）</span><img src="a-lockup-stacked.svg" alt="A 堆叠" style="max-height:260px"></div>
+  </div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card dark"><span class="cap">A3 反白版（车身 / 深色大屏 / 工服）</span><img src="a-reversed.svg" alt="A 反白"></div>
+    <div class="card center"><span class="cap">A4 方形图标</span><img src="a-icon.svg" alt="A 图标" style="height:120px"></div>
+    <div class="card center"><span class="cap">A5 单色版（刺绣 / 钢印 / 传真）</span><img src="a-icon-mono.svg" alt="A 单色" style="height:120px"></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <span class="cap">尺寸测试：16 / 24 / 32 / 48 / 64 px（favicon 与 APP 图标可读性）</span>
+    <div class="fav">
+      <div><img src="a-icon.svg" width="16" height="16" alt=""><br>16px</div>
+      <div><img src="a-icon.svg" width="24" height="24" alt=""><br>24px</div>
+      <div><img src="a-icon.svg" width="32" height="32" alt=""><br>32px</div>
+      <div><img src="a-icon.svg" width="48" height="48" alt=""><br>48px</div>
+      <div><img src="a-icon.svg" width="64" height="64" alt=""><br>64px</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>备选方案</h2>
+  <div class="grid g2">
+    <div class="card"><span class="cap">B · H→Z 流动（箭头即 "2/to"，讲"端到端"故事）</span><img src="b-lockup-hzflow.svg" alt="B"></div>
+    <div class="card"><span class="cap">C · 镜头光圈（最贴近 CCTV 业务语言）</span><img src="c-lockup-lens.svg" alt="C"></div>
+  </div>
+</section>
+
+<section>
+  <h2>应用模拟</h2>
+  <div class="grid g2">
+    <div class="card"><span class="cap">名片正面</span>
+      <div class="biz white">
+        <div class="amberline"></div>
+        <img src="a-lockup-horizontal.svg" alt="">
+        <div class="who"><div class="name">Zheng He</div>Founder · Low-Voltage &amp; Security<br>(713) 000-0000 · zheng@h2ztech.com</div>
+      </div>
+    </div>
+    <div class="card"><span class="cap">名片背面</span>
+      <div class="biz navy">
+        <div class="amberline"></div>
+        <img src="a-reversed.svg" alt="">
+        <div class="who" style="font-size:12px">CCTV · NETWORKS · AI MONITORING<br>Houston, TX · h2ztech.com</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <span class="cap">货车 / 皮卡侧面（规则：电话放大到 logo 的 3 倍）</span>
+    <div class="truck">
+      <img src="a-reversed.svg" alt="">
+      <div class="phone"><small>CALL 24/7</small>(713) 000-0000</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <span class="cap">网站头部 + 首屏</span>
+    <div class="web">
+      <div class="bar">
+        <img src="a-lockup-horizontal.svg" alt="">
+        <nav><span>Services</span><span>Industries</span><span>Monitoring</span><span>About</span><span>Contact</span></nav>
+      </div>
+      <div class="hero">
+        <h3>Warehouse &amp; Plant Networks, Cameras, and AI Operations — Managed 24/7 in Houston</h3>
+        <p>We build and run the cabling, CCTV, access control, and network layer for warehouses and plants across Greater Houston — then watch it around the clock with AI that finds weak links and self-heals common faults in about 30 seconds.</p>
+        <span class="cta">Book a Free 14-Day Smart Probe</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>色彩规范</h2>
+  <div class="sw">
+    <div><div class="chip" style="background:#0A1A2F"></div><div class="m"><b>Primary Navy</b><br>#0A1A2F<br>主色：可信/工业</div></div>
+    <div><div class="chip" style="background:#F59E0B"></div><div class="m"><b>Safety Amber</b><br>#F59E0B<br>强调：安全橙，车身高可视</div></div>
+    <div><div class="chip" style="background:#0F2A4A"></div><div class="m"><b>Deep Navy</b><br>#0F2A4A<br>深底分层/渐变</div></div>
+    <div><div class="chip" style="background:#64748B"></div><div class="m"><b>Slate Gray</b><br>#64748B<br>描述文字</div></div>
+    <div><div class="chip" style="background:#FFFFFF;border-bottom:1px solid #E2E8F0"></div><div class="m"><b>White</b><br>#FFFFFF<br>留白/反白</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>使用规范（简版）</h2>
+  <table>
+    <tr><th>项目</th><th>规则</th></tr>
+    <tr><td>字体</td><td>文字标识：超黑无衬线（Arial Black / Montserrat ExtraBold / Inter Black）；描述行：无衬线大写 + 字距 0.18em。<b>正式印刷/商标前需把文字转曲（outline）</b>，当前 SVG 使用系统字体便于你预览。</td></tr>
+    <tr><td>最小尺寸</td><td>横向锁定 ≥ 120px 宽（印刷 ≥ 30mm）；方形图标 ≥ 16px</td></tr>
+    <tr><td>留白</td><td>四周留白 ≥ 六边形内圈高度的 25%（约等于 "2" 字高）</td></tr>
+    <tr><td>底色</td><td>浅底用标准版；深底/车身用 <code>a-reversed.svg</code>；单色印刷用 <code>a-icon-mono.svg</code></td></tr>
+    <tr><td>描述行</td><td><code>CCTV · NETWORKS · AI MONITORING</code> 必须与主标识一同出现（在 logo 尚无名气时，"Tech" 不说明业务）</td></tr>
+    <tr><td>字标 "2"</td><td>永远是安全橙、永远小于 H 与 Z 并做偏移；<b>当前默认上标（H²Z）</b>，备选下标（H₂Z）；两种不得混用、不得拉平、不得改成同色</td></tr>
+  </table>
+  <div class="dont" style="margin-top:14px">
+    <div class="x">✗ 不要拉伸/压扁</div>
+    <div class="x">✗ 不要改主色（除黑白单色）</div>
+    <div class="x">✗ 不要在杂乱照片上直接压 logo</div>
+    <div class="x">✗ 不要只写 "H2Z" 去掉 TECH 与描述行</div>
+    <div class="x">✗ 不要把 "2" 拉平或改成同色</div>
+  </div>
+  <div class="note" style="margin-top:14px">
+    <b>关于 "2" 的位置（上标 vs 下标）：</b> 两种写法都保留，<b>当前默认上标 H²Z</b> —— 更像化学式/科技品牌；下标 H₂Z 更贴近 H₂O 的原写法。
+    无论哪种，<b>"2" 永远是安全橙、永远比 H 和 Z 小</b>，这是品牌识别特征（也是可注册的图文商标要素）；电话统一话术 <b>"H-two-Z"</b>，必要时补一句 <b>"like H₂O, but with a Z"</b>。
+    <br><b>为什么主推 A（六边形）：</b> 六边形同时是<b>网络节点</b>与<b>盾牌</b>的语言 —— 对应你"网络 + 安防 + AI"的三层定位；在 16px 尺寸下轮廓依然可辨，适合 favicon 与工服刺绣。
+  </div>
+</section>
+
+</main>
+</body>
+</html>

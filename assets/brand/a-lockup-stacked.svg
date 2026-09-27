@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" width="400" height="320" role="img" aria-label="H2Z Tech — stacked lockup">
+  <title>H2Z Tech — 堆叠锁定（用于正方形/竖版场景）</title>
+  <polygon points="200,38 262.35,74 262.35,146 200,182 137.65,146 137.65,74" fill="#0A1A2F"/>
+  <polygon points="200,58 245.03,84 245.03,136 200,162 154.97,136 154.97,84" fill="none" stroke="#F59E0B" stroke-width="3"/>
+  <text x="200" y="123" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="38" fill="#FFFFFF">H<tspan fill="#F59E0B" font-size="26" dy="-9">2</tspan><tspan dy="9">Z</tspan></text>
+  <text x="200" y="248" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="48" fill="#0A1A2F">H<tspan fill="#F59E0B" font-size="31" dy="-12">2</tspan><tspan dy="12">Z</tspan> <tspan font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="26" fill="#F59E0B" letter-spacing="4">TECH</tspan></text>
+  <text x="200" y="288" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="13.5" fill="#64748B" letter-spacing="3">CCTV · NETWORKS · AI MONITORING</text>
+</svg>
