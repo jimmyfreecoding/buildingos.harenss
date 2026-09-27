@@ -39,16 +39,33 @@ jobs:
       - name: 校验建表脚本语法
         run: |
           set -e
+          # 失败也要把容器收掉（--rm 只管"停止后删除"，失败时容器还在跑）
+          trap 'docker rm -f pgcheck >/dev/null 2>&1 || true' EXIT
           docker run --rm -d --name pgcheck \
             -e POSTGRES_PASSWORD=x -e POSTGRES_DB=netops \
             postgres:16-alpine >/dev/null
-          for i in $(seq 1 30); do
-            docker exec pgcheck pg_isready -U postgres >/dev/null 2>&1 && break
+          # postgres 镜像首次启动会先起一个**临时** server 跑 initdb，再停掉它起真 server。
+          # 只看 pg_isready 会在临时期就返回成功，紧接着的 psql 就会撞上
+          # "FATAL: terminating connection due to administrator command"（本机复现过：
+          # 临时 server PID 54 ready → 55 shutting down → init process complete → 真 server PID 1）。
+          # 所以要等两件事都成立：① initdb 结束（日志出现 "PostgreSQL init process complete"）；
+          # ② 真 server 能接受连接（用一条真 SQL 探，而不是 pg_isready）。
+          for i in $(seq 1 60); do
+            if docker logs pgcheck 2>&1 | grep -q 'PostgreSQL init process complete'; then break; fi
             sleep 1
           done
+          ready=0
+          for i in $(seq 1 60); do
+            if docker exec pgcheck psql -U postgres -d netops -tAc 'select 1' >/dev/null 2>&1; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" != "1" ]; then
+            echo "postgres 60 秒内没有接受连接，日志末尾："
+            docker logs pgcheck 2>&1 | tail -30
+            exit 1
+          fi
           docker exec -i pgcheck psql -U postgres -d netops -v ON_ERROR_STOP=1 \
             < packages/db/schema.sql
-          docker rm -f pgcheck >/dev/null
 
       - name: 发现带 Dockerfile 的应用
         id: discover
