@@ -8,6 +8,7 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..', '..', '..', '..'); // 仓库根
 const read = (rel) => readFileSync(path.join(root, rel), 'utf8');
 const patch = read('harness/domains/ioc/cordis.patch.yml');
+const sdkPatch = read('harness/domains/ioc/sdk.patch.yml');
 const profile = JSON.parse(read('harness/domains/ioc/package.json'));
 const start = read('harness/domains/ioc/start.sh');
 const docker = read('harness/image/Dockerfile');
@@ -42,6 +43,22 @@ test('persona：只通过 mcp__ioc__* 写草稿、不能发布', () => {
   assert.match(patch, /mcp__ioc__\*/);
   assert.match(patch, /不能发布|不能发布版本/);
   assert.match(patch, /personaSuffix/);
+});
+
+test('persona（两套 profile 都要守）：改动范围小、没改动要说、缺查询模板要如实说并造标注过的演示数据', () => {
+  for (const [name, text] of [['cordis', patch], ['sdk', sdkPatch]]) {
+    assert.match(text, /不要删除或重排已有的卡片/, name);
+    assert.match(text, /本轮没有改动/, name);
+    assert.match(text, /没有注册的查询模板/, name);
+    assert.match(text, /造一份演示数据/, name);
+    assert.match(text, /不能把模拟数据说成真实数据/, name);
+  }
+});
+test('sdk 层：审批 never（AI 编排没人盯键盘）、MCP 从环境读、persona 挂上', () => {
+  assert.match(sdkPatch, /policy: never/);
+  assert.match(sdkPatch, /defaultPreset: ioc/);
+  assert.match(sdkPatch, /url: !!js process.env.IOC_MCP_URL/);
+  assert.match(sdkPatch, /personaSuffix/);
 });
 
 test('启动脚本：凭据只装一次、每次覆盖用户层与 package.json、dump-config 自检、不打印 token 文件内容', () => {
