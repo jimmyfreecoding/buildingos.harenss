@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" width="720" height="200" role="img" aria-label="H2Z Tech alternative C — lens aperture">
+  <title>备选 C — 镜头光圈（摄像头语言：镜头 + 光圈 + 中心点）</title>
+  <circle cx="100" cy="100" r="72" fill="#0A1A2F"/>
+  <circle cx="100" cy="100" r="57" fill="none" stroke="#F59E0B" stroke-width="5"/>
+  <g stroke="#F59E0B" stroke-width="7" stroke-linecap="round">
+    <line x1="100" y1="54" x2="100" y2="80" transform="rotate(0 100 100)"/>
+    <line x1="100" y1="54" x2="100" y2="80" transform="rotate(60 100 100)"/>
+    <line x1="100" y1="54" x2="100" y2="80" transform="rotate(120 100 100)"/>
+    <line x1="100" y1="54" x2="100" y2="80" transform="rotate(180 100 100)"/>
+    <line x1="100" y1="54" x2="100" y2="80" transform="rotate(240 100 100)"/>
+    <line x1="100" y1="54" x2="100" y2="80" transform="rotate(300 100 100)"/>
+  </g>
+  <circle cx="100" cy="100" r="15" fill="#F59E0B"/>
+  <circle cx="100" cy="100" r="5" fill="#FFFFFF"/>
+  <text x="215" y="95" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="52" fill="#0A1A2F" letter-spacing="1">H<tspan fill="#F59E0B" font-size="34" dy="-13">2</tspan><tspan dy="13">Z</tspan></text>
+  <text x="332" y="95" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="30" fill="#F59E0B" letter-spacing="4">TECH</text>
+  <text x="217" y="134" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="14" fill="#64748B" letter-spacing="3.2">CCTV · NETWORKS · AI MONITORING</text>
+</svg>

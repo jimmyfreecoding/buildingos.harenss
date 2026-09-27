@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" width="720" height="200" role="img" aria-label="H2Z Tech — CCTV, Networks, AI Monitoring">
+  <title>H2Z Tech — 主标识（横向锁定）</title>
+  <!-- Mark: 六边形节点（网络节点 + 盾牌） -->
+  <polygon points="100,28 162.35,64 162.35,136 100,172 37.65,136 37.65,64" fill="#0A1A2F"/>
+  <polygon points="100,48 145.03,74 145.03,126 100,152 54.97,126 54.97,74" fill="none" stroke="#F59E0B" stroke-width="3"/>
+  <text x="100" y="113" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="38" fill="#FFFFFF">H<tspan fill="#F59E0B" font-size="26" dy="-9">2</tspan><tspan dy="9">Z</tspan></text>
+  <!-- 文字标识 -->
+  <text x="215" y="95" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="52" fill="#0A1A2F" letter-spacing="1">H<tspan fill="#F59E0B" font-size="34" dy="-13">2</tspan><tspan dy="13">Z</tspan></text>
+  <text x="332" y="95" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="30" fill="#F59E0B" letter-spacing="4">TECH</text>
+  <text x="217" y="134" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="14" fill="#64748B" letter-spacing="3.2">CCTV · NETWORKS · AI MONITORING</text>
+</svg>

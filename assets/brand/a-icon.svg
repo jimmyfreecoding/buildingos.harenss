@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="H2Z Tech icon">
+  <title>H2Z Tech — 方形图标（网站 favicon / APP / 工服胸标）</title>
+  <rect x="0" y="0" width="128" height="128" rx="26" fill="#0A1A2F"/>
+  <polygon points="64,18 103.8,41 103.8,87 64,110 24.2,87 24.2,41" fill="none" stroke="#F59E0B" stroke-width="3.5"/>
+  <text x="64" y="76" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="30" fill="#FFFFFF">H<tspan fill="#F59E0B" font-size="20" dy="-7">2</tspan><tspan dy="7">Z</tspan></text>
+</svg>

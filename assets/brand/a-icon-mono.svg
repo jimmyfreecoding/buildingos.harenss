@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="H2Z Tech mono icon">
+  <title>H2Z Tech — 单色版（刺绣 / 钢印 / 传真 / 单色印刷）</title>
+  <polygon points="64,14 107.3,39 107.3,89 64,114 20.7,89 20.7,39" fill="none" stroke="#0A1A2F" stroke-width="7"/>
+  <text x="64" y="77" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="28" fill="#0A1A2F">H<tspan font-size="19" dy="-7">2</tspan><tspan dy="7">Z</tspan></text>
+</svg>

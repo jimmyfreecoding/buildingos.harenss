@@ -1,0 +1,11 @@
+{
+  "name": "netops-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "NetOps 后端服务",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs"
+  }
+}
