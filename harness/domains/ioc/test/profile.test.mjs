@@ -51,6 +51,7 @@ test('persona（两套 profile 都要守）：改动范围小、没改动要说�
     assert.match(text, /本轮没有改动/, name);
     assert.match(text, /没有注册的查询模板/, name);
     assert.match(text, /造一份演示数据/, name);
+    assert.match(text, /有注册模板就绑模板/, name);
     assert.match(text, /不能把模拟数据说成真实数据/, name);
   }
 });
