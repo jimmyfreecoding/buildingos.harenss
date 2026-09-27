@@ -69,7 +69,10 @@ ENV DSH_HOME=/data/dsh \
 
 COPY profile/ /opt/netops/profile/
 COPY service/start.sh /usr/local/bin/netops-dsh
-RUN chmod +x /usr/local/bin/netops-dsh
+# 网络健康体检的执行器（采集 + 交给 DSH 分析 + 合并结果）
+COPY service/health-check.sh /opt/netops/bin/health-check.sh
+COPY service/assemble.py /opt/netops/bin/assemble.py
+RUN chmod +x /usr/local/bin/netops-dsh /opt/netops/bin/health-check.sh /opt/netops/bin/assemble.py
 
 EXPOSE 3090
 
