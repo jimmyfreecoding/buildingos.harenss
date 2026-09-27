@@ -1,9 +1,12 @@
 <template>
   <router-view />
+  <HealthCheck />
 </template>
 
 <script setup>
-// 无全局导航，各页面自管头部；统一深色背景
+// 无全局导航，各页面自管头部；统一深色背景。
+// 网络健康体检是一个全局工具，挂在路由之外，任何页面都能用。
+import HealthCheck from './components/HealthCheck.vue';
 </script>
 
 <style>
