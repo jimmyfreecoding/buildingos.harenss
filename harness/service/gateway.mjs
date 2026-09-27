@@ -185,7 +185,9 @@ export function createGateway(overrides = {}) {
 
   async function startSession(domain, authCtx, mcp) {
     const id = 'ses_' + randomBytes(8).toString('hex');
-    const s = new Session(id, domain, authCtx, { ...opts, mcpToken: mcp?.token, mcpUrl: mcp?.url || opts.mcpUrl });
+    // MCP 地址以 gateway 自己的部署配置为准：**运行时在里面**（可能是个容器），只有部署方知道
+    // 它该怎么访问 ioc-server（例如 host.docker.internal）；调用方传的地址只作兜底。
+    const s = new Session(id, domain, authCtx, { ...opts, mcpToken: mcp?.token, mcpUrl: opts.mcpUrl || mcp?.url });
     sessions.set(id, s);
     await s.start();
     return s;

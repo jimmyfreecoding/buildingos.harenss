@@ -164,6 +164,14 @@ test('运行时起不来：建会话回 500 E_UPSTREAM，gateway 自己不能崩
   assert.equal((await http('GET', '/v1/capabilities')).status, 200);
 });
 
+test('MCP 地址以部署配置为准：调用方传的地址只作兜底（运行时可能是个容器）', async t => {
+  const { http } = await start(t, { mcpUrl: 'http://deployment-configured:3040/ioc/mcp' });
+  const made = await http('POST', '/v1/sessions', { domain: 'ioc', mcp: { url: 'http://127.0.0.1:9999/ioc/mcp', token: 't' } });
+  assert.equal(made.status, 201, JSON.stringify(made.data));
+  const caps = await http('GET', '/v1/capabilities');
+  assert.equal(caps.data.mcp.url, 'http://deployment-configured:3040/ioc/mcp');
+});
+
 test('CORS：预检 204，普通响应带跨域头（浏览器里的控制台要直接调它）', async t => {
   const { base, http } = await start(t);
   const pre = await fetch(base + '/v1/sessions', { method: 'OPTIONS', headers: { origin: 'http://127.0.0.1:3888', 'access-control-request-method': 'POST' } });
