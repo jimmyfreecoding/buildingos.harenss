@@ -72,6 +72,7 @@
 | K21 | **模型文件格式定名为 `.buildingosmap`**（zip：manifest + glb + 语义，manifest 里 `format: "buildingosmap"`、`version: 1`）。`.acmap` 只作为旧格式**兼容导入**，不再产出；运行时按文件内容识别格式，不看后缀。编译命令为 `bosmap`（`packages/map-tools`） | 负责人（P1 执行中） |
 | K22 | **Three.js 从 r115 升级到 0.186.1（精确锁定）**。r115 是仓库初始提交带来的，没有必须保留的技术理由；新版 API 是《模型编写规范》和大模型建模的基础，并修复安全通告 GHSA-fq6p-x6j3-cmmq。现有场景通过 `twin-runtime/src/compat.js`（关闭色彩管理 + 灯光 ×π）保持 r115 的画面；是否整体改用物理正确的新设置，留作后续的视觉决策。详见 `docs/THREE-UPGRADE.md` | 负责人（P1 执行中） |
 | K23 | **后端归位与以项目为单位（P3B）**：ioc 后端源码放在 buildingos.ioc（`packages/ioc-server`），一个仓库产出宿主挂载产物、多架构 Docker 镜像（amd64 + arm64）和可直接 `node` 启动的目录，支持「挂在 buildingos 里」「园区边缘 buildingos.ai/edge 旁的独立容器」「树莓派单机」三种部署；存储和接口以项目为单位（`IOC_DATA_DIR/projects/{p}`、`/projects/{p}/…`），不做用户体系；**读操作不鉴权**，写操作由 `IOC_AUTH`（`none` 默认 / `token` 按项目编辑口令或管理令牌 / `host` 宿主 JWT）控制；写入校验、AI 不能发布、上传限制不放松；AI 可选。**替代 K4「后端 / AI 放在 buildingos」和 K15「按用户存储和授权」**。详见第 15 节 | 负责人（2026-09-26，P3 验收后） |
+| K24 | **AI 闭环 v2：h2z.ai.server 是 IOC 唯一的 AI 后端**。运行链路（已发布页面取数）不经 LLM：ioc-server `query/run` → h2z 数据端点（已批准晋级的 Node-RED 工具，即快路径）；制作链路经 LLM：ioc-server 代理 h2z 任务（契约 task-request），成果是**数据接口候选**（在 IOC 控制台批准后晋级、进入查询目录）和**草稿改动**（h2z 内的 DSH 经 `/ioc/mcp` 写草稿，人在 IOC 发布）。浏览器不直连 h2z；IOC 不持有领域凭据；AI 不能发布（两边各自强制）。harenss 的 gateway / dsh-ioc **退役**（AX 验收后删除）。**替代 P4 中「gateway 与 DSH 执行端放在 harenss」的部分**。详见第 16 节与 `docs/AI-H2Z-LOOP-DESIGN.md` | 负责人（2026-09-30） |
 
 ---
 
@@ -1041,6 +1042,37 @@ secrets: { ioc_admin_token: { file: ./ioc_admin_token.txt } }
 | 8 | 镜像仓库和版本号 | **仓库地址暂不定，本阶段只在本机构建和运行、不推送**（2026-09-26 更新；原定 CNB `docker.cnb.cool/geeqee2025/ioc-server`）。`docker/build.mjs` 保留推送能力（`--image`、`--push`），镜像名先用本地名 `ioc-server`。**版本号独立编号**（从 `0.5.0` 起），契约包版本、openapi 版本写进镜像 label | 15.6 |
 | 9 | 迁移冲突默认 | **默认 `fail`**，同时支持 `--on-conflict=suffix` 和 `--map` 手工映射 | 15.2.2 |
 | 10 | edge 问题清单 | **暂缓**（2026-09-26 更新）：现阶段只做 ioc-server 的 Docker 独立启动，edge 暂时不考虑；以后考虑融入 edge 的后台服务，届时再评估独立容器还是并入 edge 进程 / 以库的形式提供。已查到的 edge 事实留在 15.8 作参考，6 个待定问题和改动建议暂缓。不做同步功能 | 15.8 |
+
+---
+
+## 16. AI 闭环 v2：接入 h2z.ai.server（K24，2026-09-30）
+
+> 完整设计、现状对照与分步计划见 `docs/AI-H2Z-LOOP-DESIGN.md`（本节只记要点）。本节**取代**第 8 节中「gateway、dsh-ioc 由 harenss 提供」的执行端安排；第 8 节的原则（AI 只写草稿、发布要人确认、AI 不写 SQL 进播放器、凭据不进提示词）不变。
+
+### 16.1 分工
+
+| 方 | 负责 | 不负责 |
+|---|---|---|
+| h2z.ai.server | AI 任务（契约、事件、续问、取消、审批记录）、DSH 执行、Node-RED 运行时编排、数据接口的探索 / 沉淀 / 晋级、领域凭据（Node-RED 加密存储） | 发布、IOC 项目与草稿的权威状态 |
+| ioc-server | 项目 / 草稿 / 发布 / 导出、`/ioc/mcp` 写入关口、查询目录与 `query/run`、h2z 任务代理与事件中继、审批的写权限门 | 任务调度、领域凭据、任意 SQL |
+| 前端 | 控制台数据接口工作台、AI 面板、卡片取数与呈现 | 直连 h2z |
+
+### 16.2 两条链路
+
+- **运行**：卡片 `query{domain:"h2z",template,params}` → `POST /ioc/query/run` → `HttpDomainService(h2z)` → h2z `POST /v1/data/run`（只调已晋级接口，永不触发探索）→ 映射为 IOC 查询结果（`columns/rows/rowCount/truncated` + 新增 `metrics` + `source` + `mock`）→ 导出冻结快照照旧。
+- **制作**：`POST /ioc/projects/{p}/ai/tasks` → ioc-server 组装 task-request → h2z `POST /v1/tasks` → 事件经 ioc 中继（seq 续接）→ 数据接口候选在控制台「批准为数据接口」（审批转 h2z）→ 进入 `GET /ioc/catalog/queries`；草稿改动由 h2z 内 DSH 经 `/ioc/mcp`（每任务一个会话令牌，经令牌文件注入，模型不可见）写入，人在 IOC 发布。
+
+### 16.3 新配置
+
+`IOC_H2Z_URL`、`IOC_H2Z_TOKEN_FILE`（ioc-server）；`IOC_MCP_URL`、`H2Z_TASK_IOC_TOKEN_FILE`（h2z）。未配 `IOC_H2Z_URL` 时 AI 与 h2z 域关闭，ioc-server 回到纯前后端。`IOC_AI_GATEWAY` 在 AX-8 删除。
+
+### 16.4 安全分期
+
+开发期：h2z 只在回环 / 内网，服务间静态令牌；对外部署前：h2z 完成 B7（Node-RED adminAuth、桥独立容器、节点白名单、只读 DB 账号、credentialSecret 移出环境），`taskGrant` 由 ioc 签名、h2z 验签。
+
+### 16.5 执行
+
+阶段 **AX**（buildingos.ioc 分支 `refactor/ax`）：AX-0 设计确认 → AX-1 h2z 客户端与桩 → AX-2 运行链路 → AX-3 任务代理 → AX-4 数据接口工作台 → 🛑 AX-5 告警统计真机闭环 → AX-6 AI 改草稿迁到 h2z（🛑 真机）→ AX-7 P7a 呈现组件 → AX-8 退役与验收。h2z 侧 HZ-1（C4 HTTP API）→ HZ-2（C3 参数化 + 数据端点）→ HZ-3（IOC MCP 接入 DSH）→ HZ-4（B7），在 h2z.ai.server 仓库推进。原 AI-00（E1–E6）、P7-02/03、`IOC-HARNESS-DELIVERY-PLAN` 的 S0–S4、`H2Z-IOC-INTEGRATION-DESIGN` 的 B0–B4 排期作废。
 
 ---
 
